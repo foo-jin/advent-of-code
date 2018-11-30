@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate nom;
+
+use failure::format_err;
 use std::{
     fmt,
     io::{self, BufRead},
@@ -26,39 +30,44 @@ impl std::str::FromStr for Action {
     type Err = failure::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split_whitespace();
-        match parts.next().unwrap() {
-            "rect" => {
-                let mut rect = parts.next().unwrap().split('x');
-                let x = rect.next().unwrap().parse()?;
-                let y = rect.next().unwrap().parse()?;
-                let result = Action::Rect { x, y };
-                Ok(result)
-            }
-            "rotate" => {
-                let direction = match parts.next().unwrap() {
-                    "column" => Direction::Column,
-                    "row" => Direction::Row,
-                    _ => panic!("unexpected end of input"),
-                };
-                let index = parts
-                    .next()
-                    .unwrap()
-                    .split('=')
-                    .skip(1)
-                    .next()
-                    .unwrap()
-                    .parse()?;
-                let amount = parts.skip(1).next().unwrap().parse()?;
-                let result = Action::Shift {
-                    direction,
-                    index,
-                    amount,
-                };
-                Ok(result)
-            }
-            _ => panic!("unexpected end of input"),
-        }
+        use nom::{digit, space, types::CompleteStr as NomInput};
+
+        named!(direction(NomInput) -> Direction,
+            alt!(
+                value!(Direction::Column, tag!("column")) |
+                value!(Direction::Row, tag!("row"))
+            )
+        );
+
+        named!(rect(NomInput) -> Action,
+            do_parse!(
+                tag!("rect ") >>
+                x: map_res!(terminated!(digit, tag!("x")), |d: NomInput| d.parse()) >>
+                y: map_res!(digit, |d: NomInput| d.parse()) >>
+                (Action::Rect { x, y } )
+            )
+        );
+
+        named!(rotate(NomInput) -> Action,
+            do_parse!(
+                ws!(tag!("rotate")) >>
+                direction: direction >>
+                space >>
+                alt!(tag!("x=") | tag!("y=")) >>
+                index: map_res!(terminated!(digit, space), |d:  NomInput| d.parse()) >>
+                ws!(tag!("by")) >>
+                amount: map_res!(digit, |d: NomInput| d.parse()) >>
+                (Action::Shift { direction, index, amount } )
+            )
+        );
+
+        named!(action(NomInput) -> Action,
+            alt!(rect | rotate)
+        );
+
+        action(NomInput(s))
+            .map(|(_rest, result)| result)
+            .map_err(|e| format_err!("Failed to parse input: {}", e))
     }
 }
 
