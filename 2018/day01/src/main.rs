@@ -2,10 +2,7 @@ const INPUT: &str = include_str!("../input.txt");
 
 #[allow(dead_code)]
 fn part1(s: &str) -> i32 {
-    s.lines()
-        .map(|s| s.parse::<i32>())
-        .map(Result::unwrap)
-        .sum()
+    s.lines().map(|s| s.parse::<i32>().unwrap()).sum()
 }
 
 fn part2(s: &str) -> i32 {
