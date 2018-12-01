@@ -1,18 +1,9 @@
-use std::{
-    io::{self, Read},
-};
+// use std::
 
-fn get_input() -> io::Result<String> {
-    let mut buf = String::new();
-    io::stdin().read_to_string(&mut buf)?;
-    Ok(buf)
-}
+const INPUT: &str = include_str!("../input.txt");
 
 fn main() -> Result<(), failure::Error> {
-    let input = get_input()?;
-
     // solve problem
-
     Ok(())
 }
 
