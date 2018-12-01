@@ -7,6 +7,6 @@ different years of AoC. In each year folder, the daily solutions are in separate
 
 ## Setup
 `init.sh` is used to copy the template to the appropriate location and to
-download the input file. This script uses
+download the input file. `run.sh` is then used to run the program and submit the solution. These scripts use
 [aoc-tools](https://github.com/foo-jin/aoc-tools), a small toolset I wrote to fetch input, submit
 solutions, and view leaderboards.
