@@ -55,4 +55,14 @@ mod test {
         let input = "+7\n+7\n-2\n-7\n-4";
         check_first_twice(input, 14);
     }
+
+    #[test]
+    fn part1_regresssion() {
+        assert_eq!(part1(INPUT), 547);
+    }
+
+    #[test]
+    fn part2_regresssion() {
+        assert_eq!(part2(INPUT), 76414);
+    }
 }
