@@ -1,57 +1,36 @@
-#![feature(euclidean_division)]
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    io::{self, Read, Write},
+};
 
-const INPUT: &str = include_str!("../input.txt");
-
-#[allow(dead_code)]
-fn part1(s: &str) -> i32 {
-    s.lines().map(|s| s.parse::<i32>().unwrap()).sum()
-}
-
-fn part2(s: &str) -> i32 {
-    let mut freq = 0i32;
-    let mut seen = HashSet::new();
-    seen.insert(0);
-
-    for x in s.lines().map(|s| s.parse::<i32>().unwrap()).cycle() {
-        freq += x;
-        if !seen.insert(freq) {
-            break;
-        }
-    }
-
-    freq
-}
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Credits: https://www.reddit.com/r/adventofcode/comments/a20646/2018_day_1_solutions/eaukxu5/
 #[allow(dead_code)]
-fn part2_fancy(s: &str) -> i32 {
+fn part2_fancy(s: &str) -> Result<i32> {
     use std::iter;
 
-    let vals = s
-        .lines()
-        .map(|s| s.parse::<i32>().unwrap())
-        .scan(0, |state, x| {
-            *state += x;
-            Some(*state)
-        });
+    let vals = parse_input(s)?.into_iter().scan(0, |state, x| {
+        *state += x;
+        Some(*state)
+    });
     let mut cum_sums = iter::once(0).chain(vals).collect::<Vec<i32>>();
     let mut freq_set = HashSet::new();
     for &x in &cum_sums {
         if !freq_set.insert(x) {
-            return x;
+            return Ok(x);
         }
     }
 
     let shift = cum_sums.pop().unwrap();
     if shift == 0 {
-        return 0;
+        return Ok(0);
     }
 
     let mut groups: HashMap<i32, Vec<(usize, i32)>> = HashMap::new();
     for (i, freq) in cum_sums.into_iter().enumerate() {
         groups
-            .entry(freq.mod_euc(shift))
+            .entry(freq % shift.abs())
             .or_default()
             .push((i, freq));
     }
@@ -81,22 +60,61 @@ fn part2_fancy(s: &str) -> i32 {
         }
     }
 
-    min_freq.unwrap()
+    min_freq.ok_or_else(|| "no minimal frequency found".into())
 }
 
-fn main() -> Result<(), failure::Error> {
-    // let freq = part1(INPUT);
-    let freq = part2(INPUT);
-    print!("{}", freq);
+fn parse_input(s: &str) -> Result<Vec<i32>> {
+    s.lines()
+        .map(|s| s.parse::<i32>())
+        .collect::<std::result::Result<Vec<i32>, _>>()
+        .map_err(Into::into)
+}
+
+fn part1(s: &str) -> Result<i32> {
+    let mut total = 0;
+    for l in s.lines() {
+        total += l.parse::<i32>()?;
+    }
+    Ok(total)
+}
+
+fn part2(s: &str) -> Result<i32> {
+    let vals = parse_input(s)?;
+    let mut freq = 0i32;
+    let mut seen = HashSet::new();
+    seen.insert(0);
+
+    for x in vals.into_iter().cycle() {
+        freq += x;
+        if !seen.insert(freq) {
+            break;
+        }
+    }
+
+    Ok(freq)
+}
+
+fn main() -> Result<()> {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input)?;
+
+    let total_freq = part1(&input)?;
+    writeln!(io::stderr(), "level 1: {}", total_freq)?;
+
+    let double_freq = part2(&input)?;
+    writeln!(io::stderr(), "level 2: {}", double_freq)?;
+
+    writeln!(io::stdout(), "{}", double_freq)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    const INPUT: &str = include_str!("../input.txt");
 
     fn check_first_twice(input: &str, expected: i32) {
-        let result = part2(input);
+        let result = part2(input).unwrap();
         assert_eq!(result, expected);
     }
 
@@ -120,11 +138,11 @@ mod test {
 
     #[test]
     fn part1_regresssion() {
-        assert_eq!(part1(INPUT), 547);
+        assert_eq!(part1(INPUT).unwrap(), 547);
     }
 
     #[test]
     fn part2_regresssion() {
-        assert_eq!(part2(INPUT), 76414);
+        assert_eq!(part2(INPUT).unwrap(), 76414);
     }
 }
