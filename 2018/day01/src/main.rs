@@ -73,10 +73,7 @@ fn part2_fancy(s: &str) -> i32 {
                 (cur.0, Some(prev.1))
             };
 
-            if min_diff.is_none()
-                || diff < min_diff
-                || (diff == min_diff && index < min_index)
-            {
+            if min_diff.is_none() || diff < min_diff || (diff == min_diff && index < min_index) {
                 min_index = index;
                 min_diff = diff;
                 min_freq = freq;
