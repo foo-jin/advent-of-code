@@ -3,28 +3,32 @@ use std::{
     io::{self, Read, Write},
 };
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type AocResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Credits: https://www.reddit.com/r/adventofcode/comments/a20646/2018_day_1_solutions/eaukxu5/
 #[allow(dead_code)]
-fn part2_fancy(s: &str) -> Result<i32> {
+fn part2_fancy(s: &str) -> i32 {
     use std::iter;
 
-    let vals = parse_input(s)?.into_iter().scan(0, |state, x| {
-        *state += x;
-        Some(*state)
-    });
+    let vals = s
+        .lines()
+        .map(str::parse::<i32>)
+        .map(Result::unwrap)
+        .scan(0, |state, x| {
+            *state += x;
+            Some(*state)
+        });
     let mut cum_sums = iter::once(0).chain(vals).collect::<Vec<i32>>();
     let mut freq_set = HashSet::new();
     for &x in &cum_sums {
         if !freq_set.insert(x) {
-            return Ok(x);
+            return x;
         }
     }
 
     let shift = cum_sums.pop().unwrap();
     if shift == 0 {
-        return Ok(0);
+        return 0;
     }
 
     let mut groups: HashMap<i32, Vec<(usize, i32)>> = HashMap::new();
@@ -60,17 +64,10 @@ fn part2_fancy(s: &str) -> Result<i32> {
         }
     }
 
-    min_freq.ok_or_else(|| "no minimal frequency found".into())
+    min_freq.unwrap()
 }
 
-fn parse_input(s: &str) -> Result<Vec<i32>> {
-    s.lines()
-        .map(|s| s.parse::<i32>())
-        .collect::<std::result::Result<Vec<i32>, _>>()
-        .map_err(Into::into)
-}
-
-fn part1(s: &str) -> Result<i32> {
+fn part1(s: &str) -> AocResult<i32> {
     let mut total = 0;
     for l in s.lines() {
         total += l.parse::<i32>()?;
@@ -78,13 +75,13 @@ fn part1(s: &str) -> Result<i32> {
     Ok(total)
 }
 
-fn part2(s: &str) -> Result<i32> {
-    let vals = parse_input(s)?;
+fn part2(s: &str) -> AocResult<i32> {
     let mut freq = 0i32;
     let mut seen = HashSet::new();
     seen.insert(0);
 
-    for x in vals.into_iter().cycle() {
+    for l in s.lines().map(str::parse::<i32>).cycle() {
+        let x = l?;
         freq += x;
         if !seen.insert(freq) {
             break;
@@ -94,7 +91,7 @@ fn part2(s: &str) -> Result<i32> {
     Ok(freq)
 }
 
-fn main() -> Result<()> {
+fn main() -> AocResult<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
