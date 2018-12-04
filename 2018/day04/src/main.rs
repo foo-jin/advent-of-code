@@ -3,15 +3,6 @@ use std::{
     io::{self, Read, Write},
 };
 
-#[derive(Clone, Copy, Eq, Debug, Ord, PartialEq, PartialOrd)]
-struct Time {
-    year: u16,
-    month: u8,
-    day: u8,
-    hour: u8,
-    minute: u8,
-}
-
 #[derive(Clone, Copy, Debug)]
 enum Action {
     BeginShift(usize),
@@ -21,7 +12,7 @@ enum Action {
 
 #[derive(Clone, Copy, Debug)]
 struct Record {
-    time: Time,
+    time: chrono::NaiveDateTime,
     action: Action,
 }
 
@@ -39,23 +30,11 @@ impl std::str::FromStr for Record {
             static ref ID_RE: Regex = Regex::new(r"#(\d+)").unwrap();
         }
 
-        let caps = DATE_RE
-            .captures(s)
+        let date_match = DATE_RE
+            .find(s)
             .ok_or_else(|| format_err!("Unexpected input format"))?;
 
-        let year = caps[1].parse()?;
-        let month = caps[2].parse()?;
-        let day = caps[3].parse()?;
-        let hour = caps[4].parse()?;
-        let minute = caps[5].parse()?;
-        let time = Time {
-            year,
-            month,
-            day,
-            hour,
-            minute,
-        };
-
+        let time = chrono::NaiveDateTime::parse_from_str(date_match.as_str(), "[%Y-%m-%d %H:%M]")?;
         let action = if s.contains("wakes up") {
             Action::WakeUp
         } else if s.contains("falls asleep") {
@@ -89,6 +68,8 @@ fn pick_guard<F>(logs: &[Record], strategy: F) -> u32
 where
     F: Fn(&(usize, [u32; 60])) -> u32,
 {
+    use chrono::Timelike;
+
     let mut sleep_log: HashMap<usize, [u32; 60]> = HashMap::new();
     let mut guard = match logs.first().unwrap() {
         Record {
@@ -103,11 +84,12 @@ where
     for rec in logs {
         match rec.action {
             Action::BeginShift(id) => guard = id,
-            Action::Sleep => sleep = Some(rec.time.minute),
+            Action::Sleep => sleep = Some(rec.time.minute()),
             Action::WakeUp => {
-                let end = rec.time.minute;
+                let start = sleep.unwrap();
+                let end = rec.time.minute();
                 let guard_log = sleep_log.entry(guard).or_insert_with(|| [0; 60]);
-                (sleep.unwrap()..end)
+                (start..end)
                     .into_iter()
                     .for_each(|i| guard_log[i as usize] += 1);
             }
