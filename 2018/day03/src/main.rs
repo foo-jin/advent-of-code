@@ -107,8 +107,7 @@ impl Rectangle {
             y: bottom,
         } = self.bottom_right;
         (top..bottom)
-            .into_iter()
-            .flat_map(move |y| iter::repeat(y).zip((left..right).into_iter()))
+            .flat_map(move |y| iter::repeat(y).zip(left..right))
             .map(|(y, x)| Point::new(x, y))
     }
 

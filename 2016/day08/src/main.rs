@@ -94,7 +94,7 @@ impl fmt::Debug for Screen {
                 let c = if *b { "#" } else { "." };
                 write!(f, "{}", c)?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         Ok(())
