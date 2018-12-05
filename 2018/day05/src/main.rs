@@ -4,7 +4,7 @@ fn opposites(a: char, b: char) -> bool {
     a != b && a.to_ascii_uppercase() == b.to_ascii_uppercase()
 }
 
-fn full_reaction(chars: impl Iterator<Item = char>) -> usize {
+fn full_reaction(chars: impl Iterator<Item = char>) -> String {
     let mut remaining = Vec::new();
 
     for a in chars {
@@ -17,18 +17,20 @@ fn full_reaction(chars: impl Iterator<Item = char>) -> usize {
         remaining.push(a);
     }
 
-    remaining.len()
+    remaining.into_iter().collect()
 }
 
 fn level1(s: &str) -> usize {
-    full_reaction(s.trim().chars())
+    full_reaction(s.trim().chars()).len()
 }
 
 fn level2(s: &str) -> usize {
-    let chars = s.trim().chars();
+    let reacted = full_reaction(s.trim().chars());
+    let chars = reacted.chars();
     (b'a'..=b'z')
         .map(|c| c as char)
         .map(|c| full_reaction(chars.clone().filter(|a| a.to_ascii_lowercase() != c)))
+        .map(|s| s.len())
         .min()
         .unwrap()
 }
