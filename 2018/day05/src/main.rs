@@ -25,9 +25,12 @@ fn level1(s: &str) -> usize {
 }
 
 fn level2(s: &str) -> usize {
+    use rayon::prelude::*;
+
     let reacted = full_reaction(s.trim().chars());
     let chars = reacted.chars();
-    (b'a'..=b'z')
+    (b'a'..b'z'+1)
+        .into_par_iter()
         .map(|c| c as char)
         .map(|c| full_reaction(chars.clone().filter(|a| a.to_ascii_lowercase() != c)))
         .map(|s| s.len())
