@@ -1,39 +1,34 @@
 use std::io::{self, Read, Write};
 
-fn mirrors(a: char, b: char) -> bool {
-    a.is_lowercase() != b.is_lowercase() && a.to_ascii_lowercase() == b.to_ascii_lowercase()
+fn opposites(a: char, b: char) -> bool {
+    a != b && a.to_ascii_uppercase() == b.to_ascii_uppercase()
 }
 
-fn full_reaction<F>(s: &str, filter: F) -> usize
-where
-    F: Fn(&char) -> bool,
-{
-    let mut remaining = Vec::with_capacity(s.len());
-    let mut chars = s.trim().chars().filter(filter);
-    let mut current = chars.next();
-    while let Some(b) = chars.next() {
-        let a = current.unwrap();
-        if mirrors(a, b) {
-            current = remaining.pop().or_else(|| chars.next());
-        } else {
-            remaining.push(a);
-            current = Some(b);
+fn full_reaction(chars: impl Iterator<Item = char>) -> usize {
+    let mut remaining = Vec::new();
+
+    for a in chars {
+        if let Some(b) = remaining.pop() {
+            if opposites(a, b) {
+                continue;
+            }
+            remaining.push(b);
         }
-    }
-    if let Some(a) = current {
         remaining.push(a);
     }
+
     remaining.len()
 }
 
 fn level1(s: &str) -> usize {
-    full_reaction(s, |_| true)
+    full_reaction(s.trim().chars())
 }
 
 fn level2(s: &str) -> usize {
+    let chars = s.trim().chars();
     (b'a'..=b'z')
         .map(|c| c as char)
-        .map(|c| full_reaction(s, |a| a.to_ascii_lowercase() != c))
+        .map(|c| full_reaction(chars.clone().filter(|a| a.to_ascii_lowercase() != c)))
         .min()
         .unwrap()
 }
