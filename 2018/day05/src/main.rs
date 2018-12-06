@@ -1,23 +1,21 @@
 use std::io::{self, Read, Write};
 
 fn opposites(a: char, b: char) -> bool {
-    a != b && a.to_ascii_uppercase() == b.to_ascii_uppercase()
+    a != b && a.eq_ignore_ascii_case(&b)
 }
 
 fn full_reaction(chars: impl Iterator<Item = char>) -> String {
-    let mut remaining = Vec::new();
-
+    let mut stack = Vec::new();
     for a in chars {
-        if let Some(b) = remaining.pop() {
-            if opposites(a, b) {
-                continue;
+        match stack.last() {
+            Some(b) if opposites(a, *b) => {
+                stack.pop();
             }
-            remaining.push(b);
-        }
-        remaining.push(a);
+            _ => stack.push(a),
+        };
     }
 
-    remaining.into_iter().collect()
+    stack.into_iter().collect()
 }
 
 fn level1(s: &str) -> usize {
@@ -29,10 +27,10 @@ fn level2(s: &str) -> usize {
 
     let reacted = full_reaction(s.trim().chars());
     let chars = reacted.chars();
-    (b'a'..b'z'+1)
+    (b'a'..b'z' + 1)
         .into_par_iter()
         .map(|c| c as char)
-        .map(|c| full_reaction(chars.clone().filter(|a| a.to_ascii_lowercase() != c)))
+        .map(|c| full_reaction(chars.clone().filter(|a| !a.eq_ignore_ascii_case(&c))))
         .map(|s| s.len())
         .min()
         .unwrap()
