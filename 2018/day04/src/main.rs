@@ -89,18 +89,13 @@ where
                 let start = sleep.unwrap();
                 let end = rec.time.minute();
                 let guard_log = sleep_log.entry(guard).or_insert_with(|| [0; 60]);
-                (start..end)
-                    .for_each(|i| guard_log[i as usize] += 1);
+                (start..end).for_each(|i| guard_log[i as usize] += 1);
             }
         }
     }
 
     let (id, sleep) = sleep_log.into_iter().max_by_key(strategy).unwrap();
-    let (minute, _count) = sleep
-        .iter()
-        .enumerate()
-        .max_by_key(|(_i, x)| *x)
-        .unwrap();
+    let (minute, _count) = sleep.iter().enumerate().max_by_key(|(_i, x)| *x).unwrap();
     id as u32 * minute as u32
 }
 
