@@ -33,6 +33,33 @@ fn neighbours((px, py): Point) -> impl Iterator<Item = Point> {
     left.chain(right).chain(up).chain(down)
 }
 
+trait IterExt: Iterator {
+    fn min_by_key_unique<B: Ord, F>(mut self, mut f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> B,
+    {
+        self.next()
+            .map(|first| {
+                let first_p = f(&first);
+
+                self.fold((first_p, first, false), |(sel_p, sel, duplicate), x| {
+                    let x_p = f(&x);
+                    if x_p < sel_p {
+                        (x_p, x, false)
+                    } else if x_p == sel_p {
+                        (sel_p, sel, true)
+                    } else {
+                        (sel_p, sel, duplicate)
+                    }
+                })
+            })
+            .and_then(|(_sel_p, sel, duplicate)| if !duplicate { Some(sel) } else { None })
+    }
+}
+
+impl<T: Iterator> IterExt for T {}
+
 fn level1(points: &[Point]) -> usize {
     let upper = points.iter().map(|(_x, y)| *y).min().unwrap();
     let lower = points.iter().map(|(_x, y)| *y).max().unwrap();
@@ -44,31 +71,27 @@ fn level1(points: &[Point]) -> usize {
     for y in upper..=lower {
         for x in left..=right {
             let p = (x, y);
-            let (closest, dist) = points
+            if let Some(closest) = points
                 .iter()
                 .map(|q| (q, manhattan(p, *q)))
-                .min_by_key(|(_q, d)| *d)
-                .unwrap();
-
-            if points
-                .iter()
-                .map(|q| manhattan(p, *q))
-                .filter(|d| *d == dist)
-                .count()
-                > 1
+                .min_by_key_unique(|(_q, d)| *d)
+                .map(|(closest, _d)| closest)
             {
-                continue;
-            }
+                if infinite.contains(&closest) {
+                    continue;
+                }
 
-            if x == left || x == right || y == upper || y == lower {
-                infinite.insert(closest);
-            } else {
-                *counts.entry(closest).or_insert(0) += 1;
+                if x == left || x == right || y == upper || y == lower {
+                    infinite.insert(closest);
+                    counts.remove(&closest);
+                } else {
+                    *counts.entry(closest).or_insert(0) += 1;
+                }
             }
         }
     }
 
-    counts.retain(|k, _v| !infinite.contains(k));
+    // counts.retain(|k, _v| !infinite.contains(k));
     *counts.values().max().unwrap()
 }
 
