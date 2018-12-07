@@ -1,54 +1,59 @@
 use petgraph::prelude::*;
 use std::{
-    collections::BTreeSet,
+    cmp,
+    collections::BinaryHeap,
     io::{self, Read, Write},
 };
 
 const WORKERS: u32 = 5;
 const BASE_DURATION: u32 = 60;
 
-type Graph<N, E> = DiGraphMap<N, E>;
+type Step = u8;
+type Graph = DiGraphMap<Step, (Step, Step)>;
+type MinHeap<T> = BinaryHeap<cmp::Reverse<T>>;
 
-struct State {
-    step_graph: Graph<u8, (u8, u8)>,
-    queue: BTreeSet<u8>,
-    schedule: BTreeSet<(u32, u8)>,
+struct World {
+    step_graph: Graph,
+    queue: MinHeap<Step>,
+    schedule: MinHeap<(u32, Step)>,
     workers_available: u32,
     base_duration: u32,
     current_time: u32,
 }
 
-impl State {
-    fn new(step_graph: Graph<u8, (u8, u8)>, workers: u32, base_duration: u32) -> Self {
-        let queue = root_graph(&step_graph).collect::<BTreeSet<u8>>();
-        State {
+impl World {
+    fn new(step_graph: Graph, workers: u32, base_duration: u32) -> Self {
+        let queue = root_graph(&step_graph)
+            .map(cmp::Reverse)
+            .collect::<MinHeap<Step>>();
+        World {
             step_graph,
             workers_available: workers,
             base_duration,
             current_time: 0,
             queue,
-            schedule: BTreeSet::new(),
+            schedule: MinHeap::new(),
         }
     }
 
     fn take_jobs(&mut self) {
         while self.workers_available > 0 && !self.queue.is_empty() {
-            let n = *self.queue.iter().next().unwrap();
-            self.queue.remove(&n);
+            let n = self.queue.pop().unwrap().0;
             self.workers_available -= 1;
             let dt = n - b'A' + 1;
             let dt = self.base_duration + dt as u32;
-            self.schedule.insert((self.current_time + dt, n));
+            self.schedule
+                .push(cmp::Reverse((self.current_time + dt, n)));
         }
     }
 
     fn fast_forward(&mut self) {
-        let (tn, n) = *self.schedule.iter().next().unwrap();
-        debug_assert!(self.current_time <= tn);
-        self.schedule.remove(&(tn, n));
-        self.current_time = tn;
-        self.workers_available += 1;
-        remove_root_node(&mut self.step_graph, &mut self.queue, n);
+        if let Some((tn, n)) = self.schedule.pop().map(|r| r.0) {
+            debug_assert!(self.current_time <= tn);
+            self.current_time = tn;
+            self.workers_available += 1;
+            remove_root_node(&mut self.step_graph, &mut self.queue, n);
+        }
     }
 
     fn done_processing(&self) -> bool {
@@ -63,8 +68,7 @@ impl State {
     }
 }
 
-
-fn parse_graph(s: &str) -> Graph<u8, (u8, u8)> {
+fn parse_graph(s: &str) -> Graph {
     DiGraphMap::from_edges(s.trim().lines().map(|l| {
         let mut parts = l.split_whitespace();
         let a = parts.nth(1).unwrap().as_bytes()[0];
@@ -73,10 +77,7 @@ fn parse_graph(s: &str) -> Graph<u8, (u8, u8)> {
     }))
 }
 
-fn root_graph<'a, N, E>(graph: &'a Graph<N, E>) -> impl Iterator<Item = N> + 'a
-where
-    N: petgraph::graphmap::NodeTrait,
-{
+fn root_graph<'a>(graph: &'a Graph) -> impl Iterator<Item = Step> + 'a {
     graph.nodes().filter(move |n| {
         graph
             .neighbors_directed(*n, Direction::Incoming)
@@ -85,25 +86,23 @@ where
     })
 }
 
-fn remove_root_node<N, E>(graph: &mut Graph<N, E>, root_nodes: &mut BTreeSet<N>, n: N)
-where
-    N: petgraph::graphmap::NodeTrait,
-{
+fn remove_root_node(graph: &mut Graph, root_nodes: &mut MinHeap<Step>, n: Step) {
     for m in graph.neighbors_directed(n, Direction::Outgoing) {
         if graph.neighbors_directed(m, Direction::Incoming).count() == 1 {
-            root_nodes.insert(m);
+            root_nodes.push(cmp::Reverse(m));
         }
     }
 
     graph.remove_node(n);
 }
 
-fn level1(mut graph: Graph<u8, (u8, u8)>) -> String {
-    let mut queue = root_graph(&graph).collect::<BTreeSet<u8>>();
+fn level1(mut graph: Graph) -> String {
+    let mut queue = root_graph(&graph)
+        .map(cmp::Reverse)
+        .collect::<MinHeap<Step>>();
     let mut ordering = Vec::new();
 
-    while let Some(&n) = queue.iter().next() {
-        queue.remove(&n);
+    while let Some(n) = queue.pop().map(|r| r.0) {
         ordering.push(n);
         remove_root_node(&mut graph, &mut queue, n);
     }
@@ -111,8 +110,8 @@ fn level1(mut graph: Graph<u8, (u8, u8)>) -> String {
     unsafe { String::from_utf8_unchecked(ordering) }
 }
 
-fn level2(graph: Graph<u8, (u8, u8)>, workers: u32, base_duration: u32) -> u32 {
-    let mut world = State::new(graph, workers, base_duration);
+fn level2(graph: Graph, workers: u32, base_duration: u32) -> u32 {
+    let mut world = World::new(graph, workers, base_duration);
     world.simulate_to_end();
     world.current_time
 }
