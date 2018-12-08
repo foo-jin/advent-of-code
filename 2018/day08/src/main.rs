@@ -8,59 +8,64 @@ fn parse_license(s: &str) -> Result<Vec<usize>, num::ParseIntError> {
     s.trim().split_whitespace().map(str::parse).collect()
 }
 
-fn level1(mut license: &[usize]) -> usize {
-    fn process_node(license: &mut &[usize]) -> usize {
+fn level1(license: &[usize]) -> usize {
+    fn process_node(license: &[usize]) -> (&[usize], usize) {
         match license {
             [] | [_] => panic!("shouldn't happen?"),
             [children, meta, ..] => {
                 let children = *children;
                 let meta = *meta;
-                *license = &license[2..];
+                let license = &license[2..];
 
-                let mut sum = 0;
-                for _ in 0..children {
-                    sum += process_node(license);
-                }
+                let (license, mut sum) = (0..children).fold((license, 0), |(lic, sum), _| {
+                    let (rest, val) = process_node(lic);
+                    (rest, sum + val)
+                });
 
-                sum += license[..meta].iter().sum::<usize>();
-                *license = &license[meta..];
-                sum
+                let (meta, license) = license.split_at(meta);
+                sum += meta.iter().sum::<usize>();
+                (license, sum)
             }
         }
     }
 
-    process_node(&mut license)
+    let (_rest, value) = process_node(license);
+    value
 }
 
-fn level2(mut license: &[usize]) -> usize {
-    fn process_node_index(license: &mut &[usize]) -> usize {
+fn level2(license: &[usize]) -> usize {
+    fn process_node(license: &[usize]) -> (&[usize], usize) {
         match license {
-            [] | [_] => panic!("shouldn't happen?"),
+            [] | [_] => panic!("Invariant violated: license is a slice of length < 2"),
             [children, meta, ..] => {
                 let children = *children;
                 let meta = *meta;
-                *license = &license[2..];
+                let license = &license[2..];
 
-                let mut sums = vec![0; children];
+                let mut license = license;
+                let mut vals = vec![0; children];
                 for i in 0..children {
-                    sums[i] += process_node_index(license);
+                    let (rest, val) = process_node(license);
+                    license = rest;
+                    vals[i] = val;
                 }
 
+                let (meta, license) = license.split_at(meta);
                 let sum = match children {
-                    0 => license[..meta].iter().sum::<usize>(),
-                    _ => license[..meta]
+                    0 => meta.iter().sum::<usize>(),
+                    _ => meta
                         .iter()
-                        .filter_map(|m| sums.get(m.wrapping_sub(1)))
+                        .filter_map(|m| vals.get(m.wrapping_sub(1)))
                         .sum::<usize>(),
                 };
 
-                *license = &license[meta..];
-                sum
+                (license, sum)
             }
         }
     }
 
-    process_node_index(&mut license)
+    let (_rest, value) = process_node(license);
+    value
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -68,8 +73,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     io::stdin().read_to_string(&mut input)?;
     let license = parse_license(&input)?;
 
-    // let some = level1(&license);
-    // writeln!(io::stderr(), "level 1: {}", some)?;
+    let some = level1(&license);
+    writeln!(io::stderr(), "level 1: {}", some)?;
 
     let thing = level2(&license);
     writeln!(io::stderr(), "level 2: {}", thing)?;
