@@ -4,6 +4,28 @@ use std::{
     num,
 };
 
+trait CircleBuf {
+    /// Rotates the buffer by `i` steps.
+    /// Positive `i` means rotating the buffer clockwise.
+    /// Negative `i` means rotating the buffer counter-clockwise.
+    fn rotate(&mut self, i: isize);
+}
+
+impl<T> CircleBuf for VecDeque<T> {
+    fn rotate(&mut self, offset: isize) {
+        if offset > 0 {
+            for _ in 0..offset {
+                self.pop_front().map(|item| self.push_back(item));
+            }
+        } else if offset < 0 {
+            let offset = offset.abs();
+            for _ in 0..offset {
+                self.pop_back().map(|item| self.push_front(item));
+            }
+        }
+    }
+}
+
 fn parse_input(s: &str) -> Result<(u32, u32), num::ParseIntError> {
     let mut parts = s.split_whitespace();
     let players = parts.next().unwrap().parse()?;
@@ -20,16 +42,10 @@ fn level1(players: u32, hi_marble: u32) -> u32 {
     for (player, marble) in (0..players).cycle().zip(1..=hi_marble) {
         if marble % 23 == 0 {
             scores[player] += marble;
-            for _ in 0..7 {
-                let back = circle.pop_back().unwrap();
-                circle.push_front(back);
-            }
+            circle.rotate(-7);
             scores[player] += circle.pop_front().unwrap();
         } else {
-            for _ in 0..2 {
-                let front = circle.pop_front().unwrap();
-                circle.push_back(front);
-            }
+            circle.rotate(2);
             circle.push_front(marble);
         }
     }
