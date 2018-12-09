@@ -15,12 +15,16 @@ impl<T> CircleBuf for VecDeque<T> {
     fn rotate(&mut self, offset: isize) {
         if offset > 0 {
             for _ in 0..offset {
-                self.pop_front().map(|item| self.push_back(item));
+                if let Some(item) = self.pop_front() {
+                    self.push_back(item)
+                }
             }
         } else if offset < 0 {
             let offset = offset.abs();
             for _ in 0..offset {
-                self.pop_back().map(|item| self.push_front(item));
+                if let Some(item) = self.pop_back() {
+                    self.push_front(item)
+                }
             }
         }
     }

@@ -41,7 +41,7 @@ impl World {
             let n = self.queue.pop().unwrap().0;
             self.workers_available -= 1;
             let dt = n - b'A' + 1;
-            let dt = self.base_duration + dt as u32;
+            let dt = self.base_duration + u32::from(dt);
             self.schedule
                 .push(cmp::Reverse((self.current_time + dt, n)));
         }

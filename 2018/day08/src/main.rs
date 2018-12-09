@@ -44,10 +44,10 @@ fn level2(license: &[usize]) -> usize {
 
                 let mut license = license;
                 let mut vals = vec![0; children];
-                for i in 0..children {
-                    let (rest, val) = process_node(license);
+                for val in vals.iter_mut() {
+                    let (rest, v) = process_node(license);
                     license = rest;
-                    vals[i] = val;
+                    *val = v;
                 }
 
                 let (meta, license) = license.split_at(meta);
