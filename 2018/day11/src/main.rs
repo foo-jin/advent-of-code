@@ -14,73 +14,50 @@ fn power_level(x: u32, y: u32, serial: u32) -> i32 {
     powlevel as i32 - 5
 }
 
-fn level1(serial: u32) -> (usize, usize) {
-    let mut grid = [[0; GRID_SIZE]; GRID_SIZE];
-    grid.iter_mut()
-        .enumerate()
-        .flat_map(|(y, row)| iter::repeat(y).zip(row.iter_mut().enumerate()))
-        .map(|(y, (x, val))| (y as u32, x as u32, val))
-        .for_each(|(y, x, val)| *val = power_level(x, y, serial));
+fn max_subgrid(serial: u32, subgrids: impl IntoIterator<Item = usize>) -> (usize, usize, usize) {
+    let mut sum = [[0; GRID_SIZE + 1]; GRID_SIZE + 1];
+    for y in 1..=GRID_SIZE {
+        for x in 1..=GRID_SIZE {
+            let val = power_level(x as u32, y as u32, serial);
+            let top = sum[y - 1][x];
+            let left = sum[y][x - 1];
+            let diag = sum[y - 1][x - 1];
+            sum[y][x] = val + top + left - diag;
+        }
+    }
 
     let mut max_val = None;
     let mut coords = None;
-    for y in 0..GRID_SIZE - 3 {
-        for x in 0..GRID_SIZE - 3 {
-            let mut val = 0;
-            for i in 0..3 {
-                for j in 0..3 {
-                    val += grid[y + i][x + j];
+    for s in subgrids {
+        for y in s..=GRID_SIZE {
+            for x in s..=GRID_SIZE {
+                let val = sum[y][x] - sum[y - s][x] - sum[y][x - s] + sum[y - s][x - s];
+                if Some(val) > max_val {
+                    max_val = Some(val);
+                    coords = Some((x - s + 1, y - s + 1, s));
                 }
-            }
-            if Some(val) > max_val {
-                max_val = Some(val);
-                coords = Some((x, y));
             }
         }
     }
     coords.unwrap()
+}
+
+fn level1(serial: u32) -> (usize, usize) {
+    let (x, y, _) = max_subgrid(serial, iter::once(3));
+    (x, y)
 }
 
 fn level2(serial: u32) -> (usize, usize, usize) {
-    let mut grid = [[0; GRID_SIZE]; GRID_SIZE];
-    grid.iter_mut()
-        .enumerate()
-        .flat_map(|(y, row)| iter::repeat(y).zip(row.iter_mut().enumerate()))
-        .map(|(y, (x, val))| (y as u32, x as u32, val))
-        .for_each(|(y, x, val)| *val = power_level(x, y, serial));
-
-    let mut max_val = None;
-    let mut coords = None;
-
-    for chunk_size in 0..GRID_SIZE {
-        for y in 0..GRID_SIZE - chunk_size {
-            for x in 0..GRID_SIZE - chunk_size {
-                let mut val = 0;
-                for i in 0..chunk_size {
-                    for j in 0..chunk_size {
-                        val += grid[y + i][x + j];
-                    }
-                }
-                if Some(val) > max_val {
-                    max_val = Some(val);
-                    coords = Some((x, y, chunk_size));
-                }
-            }
-        }
-    }
-    coords.unwrap()
+    max_subgrid(serial, 1..=GRID_SIZE)
 }
-// fn level2(s: &str) -> ... {
-//     unimplemented!()
-// }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let serial = input.trim().parse()?;
 
-    // let some = level1(serial);
-    // writeln!(io::stderr(), "level 1: {:?}", some)?;
+    let some = level1(serial);
+    writeln!(io::stderr(), "level 1: {:?}", some)?;
 
     let thing = level2(serial);
     writeln!(io::stderr(), "level 2: {:?}", thing)?;
@@ -115,8 +92,15 @@ mod test {
         assert_eq!(level2(42), (232, 251, 12));
     }
 
-    // #[test]
-    // fn level1_regression() {
-    //     assert_eq!(level1(INPUT), 6150);
-    // }
+    #[test]
+    fn level1_regression() {
+        let input = INPUT.trim().parse().unwrap();
+        assert_eq!(level1(input), (21, 34));
+    }
+
+    #[test]
+    fn level2_regression() {
+        let input = INPUT.trim().parse().unwrap();
+        assert_eq!(level2(input), (90, 244, 16));
+    }
 }
