@@ -1,0 +1,6 @@
+[package]
+name = "day11"
+version = "0.1.0"
+authors = ["frank <frank.049@hotmail.com>"]
+edition = "2018"
+
