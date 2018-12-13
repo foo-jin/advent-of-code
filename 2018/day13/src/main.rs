@@ -65,6 +65,7 @@ struct Cart {
     pos: Point,
     facing: Direction,
     turn: [Turn; 3],
+    collided: bool,
 }
 
 impl Cart {
@@ -75,13 +76,14 @@ impl Cart {
             pos,
             facing,
             turn,
+            collided: false,
         }
     }
 
     fn update(&mut self) -> Result<(), Box<dyn Error>> {
         use std::convert::TryFrom;
         for (x, dx) in self.pos.iter_mut().zip(self.facing.0.iter()) {
-            *x = u16::try_from(i32::from(*x) + i32::from(*dx))?;
+            *x = u16::try_from(i32::from(*x) + i32::from(*dx)).unwrap();
         }
         Ok(())
     }
@@ -164,19 +166,27 @@ impl Graph {
     }
 
     fn tick(&mut self) -> Result<Option<Point>, Box<dyn Error>> {
-        let mut collisions = HashSet::new();
         let mut first = None;
-        for cart in self.carts.iter_mut() {
-            if collisions.contains(&cart.pos) {
+        for i in 0..self.carts.len() {
+            let (prefix, rest) = self.carts.split_at_mut(i);
+            let (cart, rest) = rest.split_first_mut().unwrap();
+
+            if cart.collided {
                 continue;
             }
 
             self.positions.remove(&cart.pos);
             cart.update()?;
             if !self.positions.insert(cart.pos) {
-                first = first.or_else(|| Some(cart.pos));
-                collisions.insert(cart.pos);
+                cart.collided = true;
                 self.positions.remove(&cart.pos);
+                prefix
+                    .iter_mut()
+                    .chain(rest.iter_mut())
+                    .filter(|c| c.pos == cart.pos)
+                    .for_each(|c| c.collided = true);
+
+                first = first.or_else(|| Some(cart.pos));
             }
 
             if let Some(node) = self.nodes.get(&cart.pos) {
@@ -184,12 +194,7 @@ impl Graph {
             }
         }
 
-        self.carts = self
-            .carts
-            .iter()
-            .cloned()
-            .filter(|c| !collisions.contains(&c.pos))
-            .collect();
+        self.carts = self.carts.iter().cloned().filter(|c| !c.collided).collect();
         self.sort_carts();
 
         Ok(first)
@@ -209,7 +214,11 @@ fn level2(mut graph: Graph) -> Result<Point, Box<dyn Error>> {
         graph.tick()?;
     }
 
-    Ok(graph.carts[0].pos)
+    if let Some(cart) = graph.carts.get(0) {
+        Ok(cart.pos)
+    } else {
+        err!("No carts managed to survive the ordeal")
+    }
 }
 
 fn solve() -> Result<(), Box<dyn Error>> {
@@ -235,7 +244,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut w = stderr.lock();
         writeln!(w, "Error: {}", e)?;
         while let Some(e) = e.source() {
-            writeln!(w, "\t{}", e);
+            writeln!(w, "\t{}", e)?;
         }
     }
 
@@ -283,5 +292,15 @@ mod test {
     fn level2_regression() {
         let graph = INPUT.parse().unwrap();
         assert_eq!(level2(graph).unwrap(), [91, 72])
+    }
+
+    const EDGE: &str = r"->+<-
+  ^  ";
+
+    #[test]
+    fn edge_case() {
+        let graph = EDGE.parse::<Graph>().unwrap();
+        assert_eq!(level1(graph.clone()).unwrap(), [2, 0]);
+        assert_eq!(level2(graph).unwrap(), [2, 0]);
     }
 }
