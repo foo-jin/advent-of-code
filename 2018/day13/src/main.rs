@@ -78,11 +78,12 @@ impl Cart {
         }
     }
 
-    fn update(&mut self) {
+    fn update(&mut self) -> Result<(), Box<dyn Error>> {
         use std::convert::TryFrom;
         for (x, dx) in self.pos.iter_mut().zip(self.facing.0.iter()) {
-            *x = u16::try_from(i32::from(*x) + i32::from(*dx)).expect("cart went out of bounds");
+            *x = u16::try_from(i32::from(*x) + i32::from(*dx))?;
         }
+        Ok(())
     }
 
     fn turn(&mut self, node: Node) {
@@ -162,7 +163,7 @@ impl Graph {
         });
     }
 
-    fn tick(&mut self) -> Option<Point> {
+    fn tick(&mut self) -> Result<Option<Point>, Box<dyn Error>> {
         let mut collisions = HashSet::new();
         let mut first = None;
         for cart in self.carts.iter_mut() {
@@ -171,7 +172,7 @@ impl Graph {
             }
 
             self.positions.remove(&cart.pos);
-            cart.update();
+            cart.update()?;
             if !self.positions.insert(cart.pos) {
                 first = first.or_else(|| Some(cart.pos));
                 collisions.insert(cart.pos);
@@ -191,39 +192,52 @@ impl Graph {
             .collect();
         self.sort_carts();
 
-        first
+        Ok(first)
     }
 }
 
-fn level1(mut graph: Graph) -> Point {
+fn level1(mut graph: Graph) -> Result<Point, Box<dyn Error>> {
     loop {
-        if let Some(collision) = graph.tick() {
-            return collision;
+        if let Some(collision) = graph.tick()? {
+            return Ok(collision);
         }
     }
 }
 
-fn level2(mut graph: Graph) -> Point {
+fn level2(mut graph: Graph) -> Result<Point, Box<dyn Error>> {
     while graph.carts.len() > 1 {
-        let _ = graph.tick();
+        graph.tick()?;
     }
 
-    graph.carts[0].pos
+    Ok(graph.carts[0].pos)
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn solve() -> Result<(), Box<dyn Error>> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let graph = input.parse::<Graph>()?;
 
-    let some = level1(graph.clone());
+    let some = level1(graph.clone())?;
     writeln!(io::stderr(), "level 1: {:?}", some)?;
 
-    let thing = level2(graph);
+    let thing = level2(graph)?;
     writeln!(io::stderr(), "level 2: {:?}", thing)?;
 
     // stdout is used to submit solutions
     write!(io::stdout(), "{},{}", thing[0], thing[1])?;
+
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    if let Err(e) = solve() {
+        let stderr = io::stderr();
+        let mut w = stderr.lock();
+        writeln!(w, "Error: {}", e)?;
+        while let Some(e) = e.source() {
+            writeln!(w, "\t{}", e);
+        }
+    }
 
     Ok(())
 }
@@ -242,7 +256,7 @@ mod test {
     #[test]
     fn level1_examples() {
         let graph = EXAMPLE1.parse().unwrap();
-        assert_eq!(level1(graph), [7, 3])
+        assert_eq!(level1(graph).unwrap(), [7, 3])
     }
 
     const EXAMPLE2: &str = r"/>-<\  
@@ -256,18 +270,18 @@ mod test {
     #[test]
     fn level2_examples() {
         let graph = EXAMPLE2.parse().unwrap();
-        assert_eq!(level2(graph), [6, 4])
+        assert_eq!(level2(graph).unwrap(), [6, 4])
     }
 
     #[test]
     fn level1_regression() {
         let graph = INPUT.parse().unwrap();
-        assert_eq!(level1(graph), [58, 93])
+        assert_eq!(level1(graph).unwrap(), [58, 93])
     }
 
     #[test]
     fn level2_regression() {
         let graph = INPUT.parse().unwrap();
-        assert_eq!(level2(graph), [91, 72])
+        assert_eq!(level2(graph).unwrap(), [91, 72])
     }
 }

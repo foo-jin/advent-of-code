@@ -3,11 +3,15 @@ use std::{
     io::{self, Read, Write},
 };
 
+macro_rules! err {
+    ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
+}
+
 fn level1(s: &str) -> () {
     unimplemented!()
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn solve() -> Result<(), Box<dyn Error>> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
@@ -19,6 +23,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // stdout is used to submit solutions
     writeln!(io::stdout(), "{}", some)?;
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    if let Err(e) = solve() {
+        let stderr = io::stderr();
+        let mut w = stderr.lock();
+        writeln!(w, "Error: {}", e)?;
+        while let Some(e) = e.source() {
+            writeln!(w, "\t{}", e);
+        }
+    }
+
     Ok(())
 }
 
