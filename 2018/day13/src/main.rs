@@ -175,7 +175,7 @@ impl Graph {
             self.positions.remove(&cart.pos);
             cart.update();
             if !self.positions.insert(cart.pos) {
-                first = first.or(Some(cart.pos));
+                first = first.or_else(|| Some(cart.pos));
                 collisions.insert(cart.pos);
                 self.positions.remove(&cart.pos);
             }

@@ -49,12 +49,12 @@ fn simulate(init: &[bool], rules: &HashMap<Vec<bool>, bool>, gen: u64) -> i128 {
         let mut next = vec![false; 3];
         let updated = state
             .windows(5)
-            .map(|w| rules.get(w).map(|b| *b).unwrap_or(false));
+            .map(|w| rules.get(w).cloned().unwrap_or(false));
         next.extend(updated);
         next.extend_from_slice(&[false; 3]);
         state = next;
 
-        let offset = 3 + gen as i128;
+        let offset = i128::from(3 + gen);
         let score = state
             .iter()
             .enumerate()
@@ -70,7 +70,7 @@ fn simulate(init: &[bool], rules: &HashMap<Vec<bool>, bool>, gen: u64) -> i128 {
         }
 
         if counter > PATTERN {
-            let todo = (gen - i) as i128;
+            let todo = i128::from(gen - i);
             return score + (todo * diff);
         }
 
