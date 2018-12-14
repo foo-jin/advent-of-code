@@ -3,28 +3,40 @@ use std::{
     io::{self, Read, Write},
 };
 
-fn step(recipes: &mut Vec<u8>, elfs: &mut [usize; 2]) {
-    let new = recipes[elfs[0]] + recipes[elfs[1]];
-    if new > 9 {
-        recipes.push(new / 10)
-    }
-    recipes.push(new % 10);
+struct CookBook {
+    recipes: Vec<u8>,
+    elfs: [usize; 2],
+}
 
-    for i in 0..2 {
-        let step = 1 + recipes[elfs[i]] as usize;
-        elfs[i] = (elfs[i] + step) % recipes.len();
+impl CookBook {
+    fn new() -> Self {
+        CookBook {
+            recipes: vec![3, 7],
+            elfs: [0, 1],
+        }
+    }
+
+    fn make(&mut self) -> usize {
+        let [a, b] = self.elfs;
+        let new = self.recipes[a] + self.recipes[b];
+        if new > 9 {
+            self.recipes.push(new / 10)
+        }
+        self.recipes.push(new % 10);
+
+        for elf in self.elfs.iter_mut() {
+            *elf += 1 + self.recipes[*elf] as usize;
+            *elf %= self.recipes.len();
+        }
+
+        self.recipes.len()
     }
 }
 
 fn level1(k: usize) -> u64 {
-    let mut recipes = vec![3, 7u8];
-    let mut elfs = [0, 1];
-
-    while recipes.len() < k + 10 {
-        step(&mut recipes, &mut elfs);
-    }
-
-    recipes[k..k + 10]
+    let mut cookbook = CookBook::new();
+    while cookbook.make() < k + 10 {}
+    cookbook.recipes[k..k + 10]
         .iter()
         .cloned()
         .map(u64::from)
@@ -38,20 +50,18 @@ fn level2(k: &str) -> usize {
         .iter()
         .map(|b| b - b'0')
         .collect::<Vec<u8>>();
-    let t = target.len();
-    let mut recipes = vec![3, 7u8];
-    let mut elfs = [0, 1];
-    let mut k = 0;
+
+    let mut cookbook = CookBook::new();
+    let mut ptr = 0;
 
     loop {
-        step(&mut recipes, &mut elfs);
-
-        let n = recipes.len();
-        if n >= t {
-            if let Some(i) = recipes[k..].windows(t).position(|w| w == &target[..]) {
-                return k + i;
+        let n = cookbook.make();
+        while ptr + target.len() < n {
+            if target[..] == cookbook.recipes[ptr..ptr + target.len()] {
+                return ptr;
             }
-            k = (n - target.len()) + 1;
+
+            ptr += 1;
         }
     }
 }
