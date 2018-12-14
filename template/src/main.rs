@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut w = stderr.lock();
         writeln!(w, "Error: {}", e)?;
         while let Some(e) = e.source() {
-            writeln!(w, "\t{}", e);
+            writeln!(w, "\t{}", e)?;
         }
     }
 
