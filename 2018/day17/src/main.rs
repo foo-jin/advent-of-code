@@ -22,15 +22,6 @@ enum GroundState {
     Settled,
 }
 
-impl GroundState {
-    fn is_water(&self) -> bool {
-        match self {
-            Flowing | Settled => true,
-            Clay => false,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Action {
     Fill,
@@ -101,7 +92,6 @@ impl str::FromStr for Scan {
             let xy = nums[0];
             let lo = nums[1];
             let hi = nums[2];
-
             for line in lo..=hi {
                 let p = match fixed {
                     "x" => [xy, line],
@@ -115,6 +105,7 @@ impl str::FromStr for Scan {
                 *min = cmp::min(*min, p[1]);
             }
         }
+
         let scan = Scan {
             grid,
             y_min: y_min.unwrap(),
@@ -128,10 +119,8 @@ impl str::FromStr for Scan {
 
 impl Scan {
     fn update_water(&mut self, p: Point, t: GroundState) {
-        assert!(t.is_water());
         match self.grid.entry(p) {
             Entry::Occupied(mut e) => {
-                assert!(e.get().is_water());
                 e.insert(t);
             }
             Entry::Vacant(e) => {
@@ -142,81 +131,62 @@ impl Scan {
             }
         }
     }
+
     fn settle(&mut self, p: Point) {
-        // eprintln!("settle {:?}", p);
         self.update_water(p, GroundState::Settled);
     }
 
     fn flow(&mut self, p: Point) {
-        // eprintln!("flow {:?}", p);
         self.update_water(p, GroundState::Flowing);
     }
 
     fn flood(&mut self, p: Point) -> Action {
-        // eprintln!("flood {:?}", p);
         match self.grid.get(&p) {
             Some(Flowing) | Some(Settled) => panic!("nani"),
             Some(Clay) => Action::Settle,
             None => {
                 self.flow(p);
                 let [x, y] = p;
-                let q = [x, y + 1];
-                return self.waterfall(q);
+                return self.waterfall([x, y + 1]);
             }
         }
     }
 
     fn waterfall(&mut self, p: Point) -> Action {
-        // eprintln!("waterfall {:?}", p);
         let [x, y] = p;
         if y > self.y_max {
             return Action::Done;
         }
+
         match self.grid.get(&p) {
             Some(Clay) | Some(Settled) => return Action::Fill,
             Some(Flowing) => return Action::Done,
             None => (),
         }
+
         self.flow(p);
+
         match self.waterfall([x, y + 1]) {
             Action::Settle => panic!("nani!"),
             Action::Done => Action::Done,
             Action::Fill => {
-                let mut left = Action::Fill;
-                let mut right = Action::Fill;
-                let mut i = 0;
-                let mut l = 0;
-                let mut r = 0;
+                let (mut left, mut l) = (Action::Fill, 0);
+                while left.is_fill() {
+                    l += 1;
+                    left = self.flood([x - l, y]);
+                }
 
-                while {
-                    i += 1;
-                    // eprintln!("left: {:?}, right: {:?}", left, right);
-                    left.is_fill() || right.is_fill()
-                } {
-                    if left.is_fill() {
-                        // eprintln!("flooding {} left", i);
-                        let q = [x - i, y];
-                        left = self.flood(q);
-                        if left == Action::Settle {
-                            l = i - 1;
-                        }
-                    }
-
-                    if right.is_fill() {
-                        // eprintln!("flooding {} right", i);
-                        let q = [x + i, y];
-                        right = self.flood(q);
-                        if right == Action::Settle {
-                            r = i - 1;
-                        }
-                    }
+                let (mut right, mut r) = (Action::Fill, 0);
+                while right.is_fill() {
+                    r += 1;
+                    right = self.flood([x + r, y]);
                 }
 
                 match (left, right) {
                     (Action::Settle, Action::Settle) => {
-                        for x in x - l..=x + r {
-                            self.settle([x, y]);
-                        }
+                        let l = x - (l - 1);
+                        let r = x + (r - 1);
+                        (l..=r).for_each(|x| self.settle([x, y]));
                         Action::Fill
                     }
                     _ => Action::Done,
