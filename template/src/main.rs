@@ -4,14 +4,16 @@ use std::{
 };
 
 macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
+    ($($tt:tt)*) => { Err(Box::<std::error::Error>::from(format!($($tt)*))) }
 }
 
-fn level1(s: &str) -> () {
-    unimplemented!()
+macro_rules! format_err {
+    ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
 }
 
-fn solve() -> Result<(), Box<dyn Error>> {
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+fn solve() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
@@ -26,7 +28,12 @@ fn solve() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn level1(s: &str) -> () {
+    unimplemented!()
+}
+
+fn main() -> Result<()> {
+    env_logger::init();
     if let Err(e) = solve() {
         let stderr = io::stderr();
         let mut w = stderr.lock();

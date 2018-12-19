@@ -12,7 +12,7 @@ macro_rules! err {
 }
 
 macro_rules! format_err {
-    ($($tt:tt)*) => { Box::<Error>::from(format!($($tt)*)) }
+    ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
 }
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -112,7 +112,7 @@ enum Register {
 }
 
 impl Register {
-    fn to_index(&self) -> usize {
+    fn as_index(&self) -> usize {
         match self {
             Register::R0 => 0,
             Register::R1 => 1,
@@ -142,14 +142,14 @@ impl ops::Index<Register> for Registers {
     type Output = Value;
 
     fn index(&self, r: Register) -> &Value {
-        let i = r.to_index();
+        let i = r.as_index();
         self.0.index(i)
     }
 }
 
 impl ops::IndexMut<Register> for Registers {
     fn index_mut(&mut self, r: Register) -> &mut Value {
-        let i = r.to_index();
+        let i = r.as_index();
         self.0.index_mut(i)
     }
 }
