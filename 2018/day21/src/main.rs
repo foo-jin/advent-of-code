@@ -83,8 +83,6 @@ impl VM {
                         return best;
                     }
                 }
-            } else {
-                log::trace!("ip: {}, {:?}", self.ip + 1, self.registers.0);
             }
         }
         unreachable!()
@@ -354,14 +352,16 @@ mod test {
     const INPUT: &str = include_str!("../input.txt");
 
     #[test]
-    fn level1_regression() {
-        let prog = INPUT.parse().unwrap();
-        assert_eq!(level1(&prog), 4797782)
+    fn level1_regression() -> Result<()> {
+        let prog = INPUT.parse()?;
+        assert_eq!(level1(&prog), 4797782);
+        Ok(())
     }
 
     #[test]
-    fn level2_regression() {
-        let prog = INPUT.parse().unwrap();
-        assert_eq!(level2(&prog), 6086461)
+    fn level2_regression() -> Result<()> {
+        let prog = INPUT.parse()?;
+        assert_eq!(level2(&prog), 6086461);
+        Ok(())
     }
 }
