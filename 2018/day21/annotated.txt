@@ -1,0 +1,54 @@
+seti 123 0 3            ; begin str check
+bani 3 456 3
+eqri 3 72 3
+addr 3 2 2
+seti 0 0 2              ; loop str check    
+seti 0 0 3              ; R3 := 0         
+bori 3 65536 1          ; R1 := R3 | 65536  L1  set 16th bit
+seti 4921097 0 3        ; R3 := 4921097
+bani 1 255 4            ; R4 := R1 ^ 255        bitmask lowest 8 bits
+addr 3 4 3              ; R3 += R4
+bani 3 16777215 3       ; R3 ^= 16777215        bitmask lowest 24 bits
+muli 3 65899 3          ; R3 *= 65899
+bani 3 16777215 3       ; R3 ^= 16777215        bitmask lowest 24 bits
+gtir 256 1 4            ; R4 := 256 > R1        set R4 to 0?
+addr 4 2 2              ; R2 += R4              if R4   GOTO E
+addi 2 1 2              ; R2 += 1               else    GOTO F1
+seti 27 8 2             ; R2 := 27          T1  GOTO E
+seti 0 5 4              ; R4 := 0           F1  
+addi 4 1 5              ; R5 := R4 + 1      J2
+muli 5 256 5            ; R5 *= 256
+gtrr 5 1 5              ; R5 := R5 > R1
+addr 5 2 2              ; R2 += R5              if R5   GOTO J1
+addi 2 1 2              ; R2 += 1               else    GOTO F2
+seti 25 1 2             ; R2 := 25          T2  GOTO J1
+addi 4 1 4              ; R4 += 1           F2
+seti 17 8 2             ; R2 := 17              GOTO J2
+setr 4 3 1              ; R1 := R4          J1  
+seti 7 9 2              ; R2 := 7               GOTO J2
+eqrr 3 0 4              ; R4 := R3 == R0    E
+addr 4 2 2              ; R2 += R4              if R4   EXIT
+seti 5 4 2              ; R2 := 5               else    GOTO L1
+#ip 2
+
+
+r3 = 0
+do {
+    r1 = r3 | (1 << 16)
+    r4 = r1 ^ bm(8)
+    r3 = r4 + 4921097
+    r3 ^= bm(24)
+    r3 *= 65899
+    r3 ^= bm(24)
+
+    if r1 >= 256 {
+        do {
+            r5 = r4 + 1
+            r5 *= 256
+            r4 += 1
+        } while (r5 <= r1)
+    }
+    
+    r1 = r4
+} while (r3 != r0)
+

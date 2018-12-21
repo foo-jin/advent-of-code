@@ -1,4 +1,3 @@
-#![feature(integer_atomics)]
 use std::{
     cmp,
     collections::{HashMap, HashSet, VecDeque},
