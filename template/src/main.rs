@@ -51,7 +51,7 @@ mod test {
     use super::*;
     const INPUT: &str = include_str!("../input.txt");
 
-    #[test]
+    #[test_log::new]
     fn level1_examples() {
         assert_eq!(1, 1)
     }

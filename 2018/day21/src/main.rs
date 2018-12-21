@@ -351,14 +351,14 @@ mod test {
     use super::*;
     const INPUT: &str = include_str!("../input.txt");
 
-    #[test]
+    #[test_log::new]
     fn level1_regression() -> Result<()> {
         let prog = INPUT.parse()?;
         assert_eq!(level1(&prog), 4797782);
         Ok(())
     }
 
-    #[test]
+    #[test_log::new]
     fn level2_regression() -> Result<()> {
         let prog = INPUT.parse()?;
         assert_eq!(level2(&prog), 6086461);

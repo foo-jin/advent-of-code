@@ -21,4 +21,5 @@ members = [
     '2018/day03',
     '2018/day02',
     '2018/day01',
+    'test-log',
 ]
