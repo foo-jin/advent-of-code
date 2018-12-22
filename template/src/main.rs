@@ -11,9 +11,11 @@ macro_rules! format_err {
     ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
 }
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+mod aoc {
+    pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+}
 
-fn solve() -> Result<()> {
+fn solve() -> aoc::Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
@@ -32,7 +34,7 @@ fn level1(s: &str) -> () {
     unimplemented!()
 }
 
-fn main() -> Result<()> {
+fn main() -> aoc::Result<()> {
     env_logger::init();
     if let Err(e) = solve() {
         let stderr = io::stderr();
