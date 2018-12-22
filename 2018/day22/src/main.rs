@@ -6,10 +6,6 @@ use std::{
     str::FromStr,
 };
 
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<std::error::Error>::from(format!($($tt)*))) }
-}
-
 macro_rules! format_err {
     ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
 }
@@ -46,12 +42,15 @@ fn level1(cave: &Cave) -> u32 {
 }
 
 fn level2(cave: &Cave) -> u32 {
+    let grid = cave.make_grid(1500, 1500);
+    astar(cave, &grid)
+}
+
+fn astar(cave: &Cave, grid: &Grid) -> u32 {
     use self::Equipment::*;
     use self::TerrainKind::*;
 
-    let grid = cave.make_grid(1500, 1500);
-
-    let init = SearchState::default();
+    let init = SearchState::new(cave.target);
     let mut seen = HashSet::new();
     let mut queue = BinaryHeap::new();
     queue.push(init);
@@ -69,38 +68,10 @@ fn level2(cave: &Cave) -> u32 {
         }
 
         let [x, y] = ss.pos;
-        let mut neigh = vec![];
-
-        if x > 0 {
-            neigh.extend(
-                grid.get(y)
-                    .and_then(|row| row.get(x - 1))
-                    .map(|t| ([x - 1, y], t)),
-            );
-        }
-
-        if y > 0 {
-            neigh.extend(
-                grid.get(y - 1)
-                    .and_then(|row| row.get(x))
-                    .map(|t| ([x, y - 1], t)),
-            );
-        }
-        neigh.extend(
-            grid.get(y + 1)
-                .and_then(|row| row.get(x))
-                .map(|t| ([x, y + 1], t)),
-        );
-        neigh.extend(
-            grid.get(y)
-                .and_then(|row| row.get(x + 1))
-                .map(|t| ([x + 1, y], t)),
-        );
-
         let current = grid[y][x];
-        for (p, terrain) in neigh {
+        for (p, terrain) in neighbours(&grid, ss.pos) {
             // note perhaps add transitions for useless stuff too
-            let nxt = match (current, ss.equip, *terrain) {
+            let nxt = match (current, ss.equip, terrain) {
                 (_, Climbing, Rocky)
                 | (_, Torch, Rocky)
                 | (_, Climbing, Wet)
@@ -121,14 +92,35 @@ fn level2(cave: &Cave) -> u32 {
     unreachable!()
 }
 
+fn absdiff(x: usize, y: usize) -> u32 {
+    (x as i64 - y as i64).abs() as u32
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct SearchState {
+    heur: u32,
     time: u32,
+    target: Point,
     pos: Point,
     equip: Equipment,
 }
 
 impl SearchState {
+    fn new(target: Point) -> Self {
+        SearchState {
+            target,
+            ..Self::default()
+        }
+        .update_heur()
+    }
+
+    fn update_heur(mut self) -> Self {
+        let [x, y] = self.pos;
+        let [tx, ty] = self.target;
+        self.heur = self.time + absdiff(tx, x) + absdiff(ty, y);
+        self
+    }
+
     fn switch_move(self, eq: Equipment, p: Point) -> Self {
         self.switch_equip(eq).move_to(p)
     }
@@ -144,13 +136,13 @@ impl SearchState {
     fn move_to(mut self, to: Point) -> Self {
         self.time += 1;
         self.pos = to;
-        self
+        self.update_heur()
     }
 }
 
 impl Ord for SearchState {
     fn cmp(&self, other: &SearchState) -> Ordering {
-        self.time.cmp(&other.time).reverse()
+        self.heur.cmp(&other.heur).reverse()
     }
 }
 
@@ -163,8 +155,10 @@ impl PartialOrd for SearchState {
 impl Default for SearchState {
     fn default() -> Self {
         SearchState {
+            heur: 0,
             time: 0,
             pos: [0, 0],
+            target: [0, 0],
             equip: Equipment::Torch,
         }
     }
@@ -194,6 +188,33 @@ impl From<u32> for TerrainKind {
             _ => unreachable!(),
         }
     }
+}
+
+fn neighbours(grid: &Grid, p: Point) -> impl Iterator<Item = (Point, TerrainKind)> {
+    let [x, y] = p;
+    grid.get(y + 1)
+        .and_then(|row| row.get(x))
+        .map(|t| ([x, y + 1], *t))
+        .into_iter()
+        .chain(
+            grid.get(y)
+                .and_then(|row| row.get(x + 1))
+                .map(|t| ([x + 1, y], *t)),
+        )
+        .chain(if x > 0 {
+            grid.get(y)
+                .and_then(|row| row.get(x - 1))
+                .map(|t| ([x - 1, y], *t))
+        } else {
+            None
+        })
+        .chain(if y > 0 {
+            grid.get(y - 1)
+                .and_then(|row| row.get(x))
+                .map(|t| ([x, y - 1], *t))
+        } else {
+            None
+        })
 }
 
 struct Cave {
@@ -300,6 +321,20 @@ target: 10,10";
     fn level2_examples() -> aoc::Result<()> {
         let cave = EX.parse()?;
         assert_eq!(level2(&cave), 45);
+        Ok(())
+    }
+
+    #[test_log::new]
+    fn level1_regression() -> aoc::Result<()> {
+        let cave = INPUT.parse()?;
+        assert_eq!(level1(&cave), 4479);
+        Ok(())
+    }
+
+    #[test_log::new]
+    fn level2_regression() -> aoc::Result<()> {
+        let cave = INPUT.parse()?;
+        assert_eq!(level2(&cave), 1032);
         Ok(())
     }
 }
