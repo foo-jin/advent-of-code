@@ -8,6 +8,7 @@ edition = "2018"
 log = "0.4.6"
 env_logger = "0.6.0"
 regex = "1.1.0"
+pathfinding = "1.1.10"
 
 [dev-dependencies]
 test-log = { path = "../../test-log/" }

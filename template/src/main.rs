@@ -34,7 +34,7 @@ fn level1(s: &str) -> () {
     unimplemented!()
 }
 
-fn main() -> aoc::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
     if let Err(e) = solve() {
         let stderr = io::stderr();
