@@ -1,0 +1,15 @@
+[package]
+name = "day23"
+version = "0.1.0"
+authors = ["frank <frank.049@hotmail.com>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4.6"
+env_logger = "0.6.0"
+regex = "1.1.0"
+lazy_static = "1.2.0"
+z3 = "0.3.0"
+
+[dev-dependencies]
+test-log = { path = "../../test-log/" }

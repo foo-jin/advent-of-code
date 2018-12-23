@@ -34,7 +34,7 @@ fn level1(s: &str) -> () {
     unimplemented!()
 }
 
-fn main() -> Result<()> {
+fn main() -> aoc::Result<()> {
     env_logger::init();
     if let Err(e) = solve() {
         let stderr = io::stderr();
@@ -43,6 +43,8 @@ fn main() -> Result<()> {
         while let Some(e) = e.source() {
             writeln!(w, "\t{}", e)?;
         }
+
+        std::process::exit(-1)
     }
 
     Ok(())
