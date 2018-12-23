@@ -1,13 +1,8 @@
 use std::{
-    collections::{HashMap, HashSet},
     error::Error,
     io::{self, Read, Write},
     str::FromStr,
 };
-
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<std::error::Error>::from(format!($($tt)*))) }
-}
 
 macro_rules! format_err {
     ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
@@ -44,64 +39,57 @@ fn level1(bots: &[NanoBot]) -> usize {
 }
 
 fn level2(bots: &[NanoBot]) -> u32 {
-    let cfg = z3::Config::new();
-    let ctx = z3::Context::new(&cfg);
-    let opt = z3::Optimize::new(&ctx);
+    let (mut x_min, mut x_max) = minmax(bots, 0);
+    let (mut y_min, mut y_max) = minmax(bots, 1);
+    let (mut z_min, mut z_max) = minmax(bots, 2);
+    let dx = (x_max - x_min) as usize;
 
-    let zero = ctx.from_u64(0);
-    let one = ctx.from_u64(1);
-
-    let x = ctx.named_int_const("x");
-    let y = ctx.named_int_const("y");
-    let z = ctx.named_int_const("z");
-    // dist := x + y + z
-    let dist = ctx.named_int_const("dist");
-    opt.assert(&dist._eq(&zabs(&ctx, &x).add(&[&zabs(&ctx, &y), &zabs(&ctx, &z)])));
-
-    fn zabs<'ctx>(ctx: &'ctx z3::Context, a: &'ctx z3::Ast) -> z3::Ast<'ctx> {
-        a.ge(&ctx.from_u64(0)).ite(a, &a.minus())
+    let mut step = 1;
+    while step < dx {
+        step *= 2
     }
 
-    let in_range: Vec<z3::Ast> = (0..bots.len() as u32)
-        .map(|i| ctx.numbered_int_const(i))
-        .collect();
+    let mut best = 0;
+    let mut p = ORIGIN;
+    loop {
+        for x in (x_min..=x_max).step_by(step) {
+            for y in (y_min..=y_max).step_by(step) {
+                for z in (z_min..=z_max).step_by(step) {
+                    let q = [x, y, z];
+                    let k = bots.iter().filter(|b| b.contains(q)).count();
+                    if k > best || (k == best && dist(q) < dist(p)) {
+                        best = k;
+                        p = q;
+                    }
+                }
+            }
+        }
 
-    for (var, bot) in in_range.iter().zip(bots.iter()) {
-        let (bx, by, bz, brad) = (
-            &ctx.from_i64(bot.pos[0]),
-            &ctx.from_i64(bot.pos[1]),
-            &ctx.from_i64(bot.pos[2]),
-            &ctx.from_u64(bot.rd as u64),
-        );
-        opt.assert(
-            &var._eq(
-                &zabs(&ctx, &x.sub(&[bx]))
-                    .add(&[&zabs(&ctx, &y.sub(&[by])), &zabs(&ctx, &z.sub(&[bz]))])
-                    .le(brad)
-                    .ite(&one, &zero),
-            ),
-        );
+        match step {
+            1 => return dist(p) as u32,
+            _ => {
+                let s = step as i64;
+                shift(&mut x_min, &mut x_max, p[0], s);
+                shift(&mut y_min, &mut y_max, p[1], s);
+                shift(&mut z_min, &mut z_max, p[2], s);
+                step /= 2;
+            }
+        }
     }
+}
 
-    // overlap := |{ b \in bots | b.contains(<x, y, z>) }|
-    let overlap = ctx.named_int_const("overlap");
-    opt.assert(&overlap._eq(&in_range[0].add(&in_range.iter().skip(1).collect::<Vec<_>>())));
+fn minmax(bots: &[NanoBot], i: usize) -> (i64, i64) {
+    use itertools::Itertools;
+    bots.iter()
+        .map(|b| b.pos[i])
+        .minmax()
+        .into_option()
+        .unwrap()
+}
 
-    opt.maximize(&overlap);
-    opt.minimize(&dist);
-    assert!(opt.check());
-
-    fn get_val<'ctx>(model: &z3::Model<'ctx>, a: &z3::Ast<'ctx>) -> i64 {
-        model.eval(a).and_then(|v| v.as_i64()).unwrap()
-    }
-
-    let model = opt.get_model();
-    let xv = get_val(&model, &x);
-    let yv = get_val(&model, &y);
-    let zv = get_val(&model, &z);
-    let dist = model.eval(&dist).and_then(|v| v.as_i64()).unwrap();
-    log::info!("xyz: <{}, {}, {}>, dist: {}", xv, yv, zv, dist);
-    dist as u32
+fn shift(a: &mut i64, b: &mut i64, x: i64, step: i64) {
+    *a = x - step;
+    *b = x + step;
 }
 
 fn absdiff(a: i64, b: i64) -> u32 {
@@ -112,7 +100,12 @@ fn manhattan(p: Point, q: Point) -> u32 {
     p.iter().zip(q.iter()).map(|(&a, &b)| absdiff(a, b)).sum()
 }
 
+fn dist(p: Point) -> u32 {
+    manhattan(p, ORIGIN)
+}
+
 type Point = [i64; 3];
+const ORIGIN: Point = [0, 0, 0];
 
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 struct NanoBot {
@@ -123,27 +116,6 @@ struct NanoBot {
 impl NanoBot {
     fn contains(&self, p: Point) -> bool {
         manhattan(self.pos, p) <= self.rd
-    }
-
-    fn sphere(&self) -> HashSet<Point> {
-        let r = self.rd as i64;
-        let [x, y, z] = self.pos;
-        let mut points = HashSet::new();
-        for dz in 0..=r {
-            for dy in 0..=r - dz {
-                for dx in 0..=r - (dy + dz) {
-                    points.insert([x + dx, y + dy, z + dz]);
-                    points.insert([x - dx, y - dy, z - dz]);
-                    points.insert([x - dx, y + dy, z + dz]);
-                    points.insert([x + dx, y - dy, z + dz]);
-                    points.insert([x + dx, y + dy, z - dz]);
-                    points.insert([x - dx, y + dy, z - dz]);
-                    points.insert([x + dx, y - dy, z - dz]);
-                    points.insert([x - dx, y - dy, z - dz]);
-                }
-            }
-        }
-        points
     }
 }
 
@@ -199,6 +171,14 @@ pos=<1,1,2>, r=1
 pos=<1,3,1>, r=1";
 
     #[test_log::new]
+    fn regression() -> aoc::Result<()> {
+        let bots = parse_bots(INPUT)?;
+        assert_eq!(level1(&bots), 232, "level 1 regressed");
+        assert_eq!(level2(&bots), 82010396, "level 2 regressed");
+        Ok(())
+    }
+
+    #[test_log::new]
     fn level1_examples() -> aoc::Result<()> {
         let bots = parse_bots(EX1)?;
         assert_eq!(level1(&bots), 7);
@@ -218,27 +198,5 @@ pos=<10,10,10>, r=5";
         let bots = parse_bots(EX2)?;
         assert_eq!(level2(&bots), 36);
         Ok(())
-    }
-
-    #[test_log::new]
-    fn sphere_sanity() {
-        let bot = NanoBot {
-            pos: [0, 0, 0],
-            rd: 1,
-        };
-        let result = bot.sphere();
-        let expected = vec![
-            [0, 0, 0],
-            [1, 0, 0],
-            [-1, 0, 0],
-            [0, 1, 0],
-            [0, -1, 0],
-            [0, 0, 1],
-            [0, 0, -1],
-        ]
-        .into_iter()
-        .collect();
-
-        assert_eq!(result, expected);
     }
 }
