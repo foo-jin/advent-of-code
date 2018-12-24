@@ -1,13 +1,8 @@
 use std::{
-    collections::{HashMap, HashSet},
     error::Error,
     io::{self, Read, Write},
     str::FromStr,
 };
-
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<std::error::Error>::from(format!($($tt)*))) }
-}
 
 macro_rules! format_err {
     ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
@@ -44,6 +39,18 @@ fn level1(bots: &[NanoBot]) -> usize {
 }
 
 fn level2(bots: &[NanoBot]) -> u32 {
+    fn abs<'ctx>(ctx: &'ctx z3::Context, a: &z3::Ast<'ctx>) -> z3::Ast<'ctx> {
+        a.ge(&ctx.from_u64(0)).ite(a, &a.minus())
+    }
+
+    fn absdiff<'ctx>(
+        ctx: &'ctx z3::Context,
+        a: &z3::Ast<'ctx>,
+        b: &z3::Ast<'ctx>,
+    ) -> z3::Ast<'ctx> {
+        abs(ctx, &a.sub(&[b]))
+    }
+
     let cfg = z3::Config::new();
     let ctx = z3::Context::new(&cfg);
     let opt = z3::Optimize::new(&ctx);
@@ -56,36 +63,25 @@ fn level2(bots: &[NanoBot]) -> u32 {
     let z = ctx.named_int_const("z");
     // dist := x + y + z
     let dist = ctx.named_int_const("dist");
-    opt.assert(&dist._eq(&zabs(&ctx, &x).add(&[&zabs(&ctx, &y), &zabs(&ctx, &z)])));
-
-    fn zabs<'ctx>(ctx: &'ctx z3::Context, a: &'ctx z3::Ast) -> z3::Ast<'ctx> {
-        a.ge(&ctx.from_u64(0)).ite(a, &a.minus())
-    }
+    opt.assert(&dist._eq(&abs(&ctx, &x).add(&[&abs(&ctx, &y), &abs(&ctx, &z)])));
 
     let in_range: Vec<z3::Ast> = (0..bots.len() as u32)
         .map(|i| ctx.numbered_int_const(i))
         .collect();
 
     for (var, bot) in in_range.iter().zip(bots.iter()) {
-        let (bx, by, bz, brad) = (
-            &ctx.from_i64(bot.pos[0]),
-            &ctx.from_i64(bot.pos[1]),
-            &ctx.from_i64(bot.pos[2]),
-            &ctx.from_u64(bot.rd as u64),
-        );
-        opt.assert(
-            &var._eq(
-                &zabs(&ctx, &x.sub(&[bx]))
-                    .add(&[&zabs(&ctx, &y.sub(&[by])), &zabs(&ctx, &z.sub(&[bz]))])
-                    .le(brad)
-                    .ite(&one, &zero),
-            ),
-        );
+        let dx = &absdiff(&ctx, &x, &ctx.from_i64(bot.pos[0]));
+        let dy = &absdiff(&ctx, &y, &ctx.from_i64(bot.pos[1]));
+        let dz = &absdiff(&ctx, &z, &ctx.from_i64(bot.pos[2]));
+        let rd = &ctx.from_u64(bot.rd as u64);
+        let bot_dist = &zero.add(&[dx, dy, dz]);
+        opt.assert(&var._eq(&bot_dist.le(rd).ite(&one, &zero)));
     }
 
     // overlap := |{ b \in bots | b.contains(<x, y, z>) }|
     let overlap = ctx.named_int_const("overlap");
-    opt.assert(&overlap._eq(&in_range[0].add(&in_range.iter().skip(1).collect::<Vec<_>>())));
+    let in_range_refs: Vec<&z3::Ast> = in_range.iter().collect();
+    opt.assert(&overlap._eq(&zero.add(&in_range_refs)));
 
     opt.maximize(&overlap);
     opt.minimize(&dist);
@@ -123,27 +119,6 @@ struct NanoBot {
 impl NanoBot {
     fn contains(&self, p: Point) -> bool {
         manhattan(self.pos, p) <= self.rd
-    }
-
-    fn sphere(&self) -> HashSet<Point> {
-        let r = self.rd as i64;
-        let [x, y, z] = self.pos;
-        let mut points = HashSet::new();
-        for dz in 0..=r {
-            for dy in 0..=r - dz {
-                for dx in 0..=r - (dy + dz) {
-                    points.insert([x + dx, y + dy, z + dz]);
-                    points.insert([x - dx, y - dy, z - dz]);
-                    points.insert([x - dx, y + dy, z + dz]);
-                    points.insert([x + dx, y - dy, z + dz]);
-                    points.insert([x + dx, y + dy, z - dz]);
-                    points.insert([x - dx, y + dy, z - dz]);
-                    points.insert([x + dx, y - dy, z - dz]);
-                    points.insert([x - dx, y - dy, z - dz]);
-                }
-            }
-        }
-        points
     }
 }
 
@@ -187,6 +162,15 @@ fn main() -> aoc::Result<()> {
 mod test {
     use super::*;
     const INPUT: &str = include_str!("../input.txt");
+
+    #[test_log::new]
+    fn regression() -> aoc::Result<()> {
+        let bots = parse_bots(INPUT)?;
+        assert_eq!(level1(&bots), 232, "level 1 regressed");
+        assert_eq!(level2(&bots), 82010396, "level 2 regressed");
+        Ok(())
+    }
+
     const EX1: &str = "
 pos=<0,0,0>, r=4
 pos=<1,0,0>, r=1
@@ -218,27 +202,5 @@ pos=<10,10,10>, r=5";
         let bots = parse_bots(EX2)?;
         assert_eq!(level2(&bots), 36);
         Ok(())
-    }
-
-    #[test_log::new]
-    fn sphere_sanity() {
-        let bot = NanoBot {
-            pos: [0, 0, 0],
-            rd: 1,
-        };
-        let result = bot.sphere();
-        let expected = vec![
-            [0, 0, 0],
-            [1, 0, 0],
-            [-1, 0, 0],
-            [0, 1, 0],
-            [0, -1, 0],
-            [0, 0, 1],
-            [0, 0, -1],
-        ]
-        .into_iter()
-        .collect();
-
-        assert_eq!(result, expected);
     }
 }
