@@ -38,6 +38,9 @@ fn level1(bots: &[NanoBot]) -> usize {
     bots.iter().filter(|b| strongest.contains(b.pos)).count()
 }
 
+/// The approach used here does not generalize, since it works towards a local maximum.
+/// In the z3 branch a general solution can be found using (start the drums) z3. It's performance
+/// however is a lot worse (takes about a full minute on my machine).
 fn level2(bots: &[NanoBot]) -> u32 {
     let (mut x_min, mut x_max) = minmax(bots, 0);
     let (mut y_min, mut y_max) = minmax(bots, 1);
