@@ -8,7 +8,7 @@ DEST="${YEAR}/day${DAY}"
 
 mkdir "${DEST}"
 cp -r "${SOURCE}/"* "${DEST}/"
-sed -i "s/template/day${DAY}/g" "${DEST}/Cargo.toml"
+sed -i "s/template/${YEAR}day${DAY}/g" "${DEST}/Cargo.toml"
 sed -i "/members = \[/a\    '${DEST}'," Cargo.toml
 
 cd "${DEST}"
