@@ -2,51 +2,33 @@ use std::{
     io::{self, Read, Write},
 };
 
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<std::error::Error>::from(format!($($tt)*))) }
-}
-
-macro_rules! format_err {
-    ($($tt:tt)*) => { Box::<std::error::Error>::from(format!($($tt)*)) }
-}
-
-mod aoc {
-    pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-}
-
-fn solve() -> aoc::Result<()> {
+fn main() {
     let mut input = String::new();
-    io::stdin().read_to_string(&mut input)?;
+    io::stdin().read_to_string(&mut input).unwrap();
 
-    let some = level1(&input);
-    writeln!(io::stderr(), "level 1: {}", some)?;
+    let parsed = parse(&input);
 
-    // let thing = level2(&input);
-    // writeln!(io::stderr(), "level 2: {}", thing)?;
+    let some = level1(&parsed);
+    eprintln!("level 1: {}", some);
+
+    let thing = level2(&parsed);
+    eprintln!("level 2: {}", thing);
 
     // stdout is used to submit solutions
-    writeln!(io::stdout(), "{}", some)?;
+    println!("{}", some)?;
     Ok(())
 }
 
-fn level1(s: &str) -> () {
-    unimplemented!()
+fn parse(s: &str) -> u32 {
+    0
 }
 
-fn main() -> aoc::Result<()> {
-    env_logger::init();
-    if let Err(e) = solve() {
-        let stderr = io::stderr();
-        let mut w = stderr.lock();
-        writeln!(w, "Error: {}", e)?;
-        while let Some(e) = e.source() {
-            writeln!(w, "\t{}", e)?;
-        }
+fn level1(input: u32) -> u32 {
+    0
+}
 
-        std::process::exit(-1)
-    }
-
-    Ok(())
+fn level2(input: u32) -> u32 {
+    0
 }
 
 #[cfg(test)]
@@ -54,8 +36,23 @@ mod test {
     use super::*;
     const INPUT: &str = include_str!("../input.txt");
 
-    #[test_log::new]
+    #[test]
     fn level1_examples() {
+        assert_eq!(1, 1)
+    }
+
+    // #[test]
+    fn level2_examples() {
+        assert_eq!(1, 1)
+    }
+
+    // #[test]
+    fn level1_sanity() {
+        assert_eq!(1, 1)
+    }
+
+    // #[test]
+    fn level2_sanity() {
         assert_eq!(1, 1)
     }
 }
