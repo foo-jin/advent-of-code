@@ -1,5 +1,5 @@
 use std::{
-    io::{self, Read, Write},
+    io::{self, Read},
 };
 
 fn main() {
@@ -15,19 +15,18 @@ fn main() {
     eprintln!("level 2: {}", thing);
 
     // stdout is used to submit solutions
-    println!("{}", some)?;
-    Ok(())
+    println!("{}", some);
 }
 
 fn parse(s: &str) -> u32 {
     0
 }
 
-fn level1(input: u32) -> u32 {
+fn level1(input: &u32) -> u32 {
     0
 }
 
-fn level2(input: u32) -> u32 {
+fn level2(input: &u32) -> u32 {
     0
 }
 
