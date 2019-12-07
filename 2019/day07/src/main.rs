@@ -22,11 +22,6 @@ enum Signal {
 #[derive(Clone)]
 struct IntCode(Vec<i32>);
 
-struct Amplifier {
-    intcode: IntCode,
-    phase: i32,
-}
-
 impl FromStr for IntCode {
     type Err = std::num::ParseIntError;
 
@@ -38,22 +33,6 @@ impl FromStr for IntCode {
             .map(IntCode)
     }
 }
-
-impl Amplifier {
-    fn launch(
-	mut self,
-        input_tx: mpsc::Sender<Signal>,
-        input_rx: mpsc::Receiver<Signal>,
-    ) -> (mpsc::Sender<Signal>, mpsc::Receiver<Signal>) {
-	let phase = self.phase;
-	let (output_tx, output_rx) = mpsc::channel();
-	let clone_tx = output_tx.clone();
-	rayon::spawn(move || self.intcode.run(input_rx, clone_tx).unwrap());
-	input_tx.send(Signal::Value(phase)).unwrap();
-	(output_tx, output_rx)
-    }
-}
-
 impl IntCode {
     fn run(
         &mut self,
@@ -177,26 +156,24 @@ fn level1(intcode: &IntCode) -> aoc::Result<u32> {
 
 fn level2(intcode: &IntCode) -> aoc::Result<u32> {
     let mut phase_settings = vec![5, 6, 7, 8, 9];
-    let heap = permutohedron::Heap::new(&mut phase_settings);
     let mut thruster_signal = 0;
-
+    let heap = permutohedron::Heap::new(&mut phase_settings);
     for permutation in heap {
         let (init_tx, init_rx) = mpsc::channel();
         let mut tx = init_tx.clone();
         let mut rx = init_rx;
 	for i in 0..=4 {
-	    let amp = Amplifier {
-		intcode: intcode.clone(),
-		phase: permutation[i],
-	    };
-	    let chan = amp.launch(tx.clone(), rx);
-	    tx = chan.0;
-	    rx = chan.1;
+	    let mut ic = intcode.clone();
+	    let (new_tx, new_rx) = mpsc::channel();
+	    let cloned_tx = new_tx.clone();
+	    rayon::spawn(move || ic.run(rx, cloned_tx).unwrap());
+	    tx.send(Signal::Value(permutation[i])).unwrap();
+	    tx = new_tx;
+	    rx = new_rx;
 	}
 
         init_tx.send(Signal::Value(0)).unwrap();
         let mut amplified_input = 0;
-
         for sig in rx.iter() {
             let _ = init_tx.send(sig);
             match sig {
