@@ -48,9 +48,9 @@ impl IntCode {
             let mut mode = [0u8; 3];
             for i in 0..3 {
                 mode[i] = (instruction % 10) as u8;
-		if !(0..=1).contains(&mode[i]) {
-		    err!("Unkown mode encountered: {}", mode[i])?
-		}
+                if !(0..=1).contains(&mode[i]) {
+                    err!("Unkown mode encountered: {}", mode[i])?
+                }
                 instruction /= 10;
             }
 
@@ -70,13 +70,23 @@ impl IntCode {
                     intcode[out] = match opcode {
                         1 => args[0] + args[1],
                         2 => args[0] * args[1],
-                        7 => if args[0] < args[1] {1} else {0},
-                        8 => if args[0] == args[1] {1} else {0},
+                        7 =>
+                            if args[0] < args[1] {
+                                1
+                            } else {
+                                0
+                            },
+                        8 =>
+                            if args[0] == args[1] {
+                                1
+                            } else {
+                                0
+                            },
                         _ => unreachable!(),
                     };
 
                     ip += 4;
-                }
+                },
                 3 => {
                     let address = intcode[ip + 1] as usize;
                     let val = match input.recv().unwrap() {
@@ -86,14 +96,14 @@ impl IntCode {
 
                     intcode[address] = val;
                     ip += 2;
-                }
+                },
                 4 => {
                     let address = intcode[ip + 1] as usize;
                     let out = intcode[address];
                     let _ = output.send(Signal::Value(out));
                     log::debug!("Output {}", out);
                     ip += 2;
-                }
+                },
                 5 | 6 => {
                     let mut args = [0; 2];
                     for i in 0..2 {
@@ -116,7 +126,7 @@ impl IntCode {
                     } else {
                         ip += 3;
                     }
-                }
+                },
                 99 => break,
                 _ => err!("Unknown opcode encountered: {}", opcode)?,
             }
@@ -136,15 +146,15 @@ fn level1(intcode: &IntCode) -> aoc::Result<u32> {
         let mut amplified_input = 0;
         for phase in permutation {
             let mut ic = intcode.clone();
-	    let (input, rx) = mpsc::channel();
-	    let (tx, output) = mpsc::channel();
-	    input.send(Signal::Value(phase)).unwrap();
-	    input.send(Signal::Value(amplified_input)).unwrap();
+            let (input, rx) = mpsc::channel();
+            let (tx, output) = mpsc::channel();
+            input.send(Signal::Value(phase)).unwrap();
+            input.send(Signal::Value(amplified_input)).unwrap();
             ic.run(rx, tx)?;
-	    amplified_input = match output.recv().unwrap() {
-		Signal::Value(x) => x,
-		Signal::Halting => err!("Amplifier halted before giving output")?,
-	    };
+            amplified_input = match output.recv().unwrap() {
+                Signal::Value(x) => x,
+                Signal::Halting => err!("Amplifier halted before giving output")?,
+            };
         }
 
         let output = u32::try_from(amplified_input)?;
@@ -162,15 +172,15 @@ fn level2(intcode: &IntCode) -> aoc::Result<u32> {
         let (init_tx, init_rx) = mpsc::channel();
         let mut tx = init_tx.clone();
         let mut rx = init_rx;
-	for i in 0..=4 {
-	    let mut ic = intcode.clone();
-	    let (new_tx, new_rx) = mpsc::channel();
-	    let cloned_tx = new_tx.clone();
-	    rayon::spawn(move || ic.run(rx, cloned_tx).unwrap());
-	    tx.send(Signal::Value(permutation[i])).unwrap();
-	    tx = new_tx;
-	    rx = new_rx;
-	}
+        for i in 0..=4 {
+            let mut ic = intcode.clone();
+            let (new_tx, new_rx) = mpsc::channel();
+            let cloned_tx = new_tx.clone();
+            rayon::spawn(move || ic.run(rx, cloned_tx).unwrap());
+            tx.send(Signal::Value(permutation[i])).unwrap();
+            tx = new_tx;
+            rx = new_rx;
+        }
 
         init_tx.send(Signal::Value(0)).unwrap();
         let mut amplified_input = 0;
