@@ -1,4 +1,5 @@
-match_block_trailing_comma=true
-match_arm_blocks=false
-reorder_impl_items=true
-use_small_heuristics=max
+unstable_features = true
+match_block_trailing_comma = true
+match_arm_blocks = false
+reorder_impl_items = true
+use_small_heuristics = "Max"
