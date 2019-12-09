@@ -2,7 +2,6 @@ use std::{
     io::{self, Read, Write},
     str::FromStr,
     sync::mpsc,
-    thread,
 };
 
 macro_rules! err {
@@ -12,6 +11,8 @@ macro_rules! err {
 mod aoc {
     pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 }
+
+const CODE_LEN: usize = 10_000;
 
 type Val = i64;
 
@@ -33,8 +34,8 @@ impl FromStr for IntCode {
             .map(str::parse::<Val>)
             .collect::<Result<Vec<Val>, Self::Err>>()
             .map(|mut xs| {
-                if xs.len() < 10000 {
-                    xs.resize_with(10000, Default::default);
+                if xs.len() < CODE_LEN {
+                    xs.resize_with(CODE_LEN, Default::default);
                 }
                 xs
             })
@@ -57,27 +58,23 @@ impl IntCode {
             let opcode = (instruction % 100) as u8;
             instruction /= 100;
             let mut mode = [0u8; 3];
-            for m in &mut mode {
-                *m = (instruction % 10) as u8;
-                if !(0..=2).contains(m) {
-                    return err!("Unkown mode encountered: {}", m);
-                }
+            let mut args = [0; 3];
+            for i in 0..3 {
+                mode[i] = (instruction % 10) as u8;
+                let val = intcode[ip + i + 1];
+                let val_addr = val as usize;
+                let rel_addr = (relative_base + val) as usize;
+                args[i] = match mode[i] {
+                    0 if val_addr < CODE_LEN => intcode[val as usize],
+                    2 if rel_addr < CODE_LEN => intcode[(relative_base + val) as usize],
+                    0 | 1 | 2 => val,
+                    m => return err!("Unkown mode encountered: {}", m),
+                };
                 instruction /= 10;
             }
 
             match opcode {
                 1 | 2 | 7 | 8 => {
-                    let mut args = [0; 2];
-                    for i in 0..2 {
-                        let val = intcode[ip + i + 1];
-                        args[i] = match mode[i] {
-                            0 => intcode[val as usize],
-                            1 => val,
-                            2 => intcode[(relative_base + val) as usize],
-                            _ => unreachable!(),
-                        };
-                    }
-
                     let val = intcode[ip + 3];
                     let address = match mode[2] {
                         0 => val,
@@ -137,29 +134,12 @@ impl IntCode {
                     ip += 2;
                 }
                 4 => {
-                    let val = intcode[ip + 1];
-                    let out = match mode[0] {
-                        0 => intcode[val as usize],
-                        1 => val,
-                        2 => intcode[(relative_base + val) as usize],
-                        _ => unreachable!(),
-                    };
+                    let out = args[0];
                     let _ = output.send(Signal::Value(out));
                     log::debug!("Output {}", out);
                     ip += 2;
                 }
                 5 | 6 => {
-                    let mut args = [0; 2];
-                    for i in 0..2 {
-                        let val = intcode[ip + i + 1];
-                        args[i] = match mode[i] {
-                            0 => intcode[val as usize],
-                            1 => val,
-                            2 => intcode[(relative_base + val) as usize],
-                            _ => unreachable!(),
-                        };
-                    }
-
                     let b = match opcode {
                         5 => args[0] != 0,
                         6 => args[0] == 0,
@@ -173,13 +153,7 @@ impl IntCode {
                     }
                 }
                 9 => {
-                    let val = intcode[ip + 1];
-                    let offset = match mode[0] {
-                        0 => intcode[val as usize],
-                        1 => val,
-                        2 => intcode[(relative_base + val) as usize],
-                        _ => unreachable!(),
-                    };
+                    let offset = args[0];
                     relative_base += offset;
                     log::debug!("relative_base += {}", offset);
                     ip += 2;
@@ -193,16 +167,16 @@ impl IntCode {
         Ok(())
     }
 
-    fn prepare(mut self) -> (mpsc::Sender<Signal>, mpsc::Receiver<Signal>) {
+    fn spawn(mut self) -> (mpsc::Sender<Signal>, mpsc::Receiver<Signal>) {
         let (input, rx) = mpsc::channel();
         let (tx, output) = mpsc::channel();
-        thread::spawn(move || self.run(rx, tx).unwrap());
+        rayon::spawn(move || self.run(rx, tx).unwrap());
         (input, output)
     }
 }
 
 fn run_with_input(ic: IntCode, input_value: Val) -> aoc::Result<Val> {
-    let (input, output) = ic.prepare();
+    let (input, output) = ic.spawn();
     input.send(Signal::Value(input_value))?;
     let mut result = None;
     for o in output {
@@ -222,8 +196,7 @@ fn level1(intcode: &IntCode) -> aoc::Result<Val> {
 fn level2(intcode: &IntCode) -> aoc::Result<Val> {
     run_with_input(intcode.clone(), 2)
 }
-// level 1: 4288078517
-// level 2: 69256
+
 fn solve() -> aoc::Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
