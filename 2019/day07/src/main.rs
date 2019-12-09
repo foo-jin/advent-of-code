@@ -33,6 +33,7 @@ impl FromStr for IntCode {
             .map(IntCode)
     }
 }
+
 impl IntCode {
     fn run(
         &mut self,
@@ -46,10 +47,10 @@ impl IntCode {
             let opcode = (instruction % 100) as u8;
             instruction /= 100;
             let mut mode = [0u8; 3];
-            for i in 0..3 {
-                mode[i] = (instruction % 10) as u8;
-                if !(0..=1).contains(&mode[i]) {
-                    err!("Unkown mode encountered: {}", mode[i])?
+            for m in &mut mode {
+                *m = (instruction % 10) as u8;
+                if !(0..=1).contains(m) {
+                    return err!("Unkown mode encountered: {}", m);
                 }
                 instruction /= 10;
             }
@@ -128,12 +129,12 @@ impl IntCode {
                     }
                 },
                 99 => break,
-                _ => err!("Unknown opcode encountered: {}", opcode)?,
+                _ => return err!("Unknown opcode encountered: {}", opcode),
             }
         }
 
         let _ = output.send(Signal::Halting);
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -153,7 +154,7 @@ fn level1(intcode: &IntCode) -> aoc::Result<u32> {
             ic.run(rx, tx)?;
             amplified_input = match output.recv().unwrap() {
                 Signal::Value(x) => x,
-                Signal::Halting => err!("Amplifier halted before giving output")?,
+                Signal::Halting => return err!("Amplifier halted before giving output"),
             };
         }
 
@@ -172,12 +173,12 @@ fn level2(intcode: &IntCode) -> aoc::Result<u32> {
         let (init_tx, init_rx) = mpsc::channel();
         let mut tx = init_tx.clone();
         let mut rx = init_rx;
-        for i in 0..=4 {
+        for phase in permutation {
             let mut ic = intcode.clone();
             let (new_tx, new_rx) = mpsc::channel();
             let cloned_tx = new_tx.clone();
             rayon::spawn(move || ic.run(rx, cloned_tx).unwrap());
-            tx.send(Signal::Value(permutation[i])).unwrap();
+            tx.send(Signal::Value(phase)).unwrap();
             tx = new_tx;
             rx = new_rx;
         }
