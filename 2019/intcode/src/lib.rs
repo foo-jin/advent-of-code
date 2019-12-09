@@ -1,6 +1,4 @@
-use std::{str::FromStr, sync::mpsc};
-
-const CODE_LEN: usize = 10_000;
+use std::{convert::TryFrom, sync::mpsc};
 
 pub type Value = i64;
 
@@ -14,9 +12,82 @@ pub enum Signal {
 pub struct VM {
     ip: usize,
     rp: Value,
+    instr: Instruction,
     input: Option<mpsc::Receiver<Signal>>,
     output: Option<mpsc::Sender<Signal>>,
     mem: Vec<Value>,
+}
+
+#[derive(Clone, Copy)]
+enum Opcode {
+    Add,
+    Mul,
+    Read,
+    Write,
+    Jit,
+    Jif,
+    Lt,
+    Eq,
+    Set,
+    Halt,
+}
+
+#[derive(Clone, Copy)]
+enum Mode {
+    Positional,
+    Immediate,
+    Relative,
+}
+
+#[derive(Default)]
+struct Instruction {
+    mp: usize,
+    modes: [Mode; 3],
+}
+
+impl TryFrom<Value> for Opcode {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(x: Value) -> Result<Self, Self::Error> {
+        use Opcode::*;
+        let opcode = match x {
+            1 => Add,
+            2 => Mul,
+            3 => Read,
+            4 => Write,
+            5 => Jit,
+            6 => Jif,
+            7 => Lt,
+            8 => Eq,
+            9 => Set,
+            99 => Halt,
+            m => return aoc::err!("Unkown opcode encountered: {}", m),
+        };
+
+        Ok(opcode)
+    }
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Positional
+    }
+}
+
+impl TryFrom<Value> for Mode {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(x: Value) -> Result<Self, Self::Error> {
+        use Mode::*;
+        let mode = match x {
+            0 => Positional,
+            1 => Immediate,
+            2 => Relative,
+            m => return aoc::err!("Unkown mode encountered: {}", m),
+        };
+
+        Ok(mode)
+    }
 }
 
 impl VM {
@@ -32,7 +103,6 @@ impl VM {
             let x = num.parse()?;
             self.mem.push(x);
         }
-        self.mem.resize(CODE_LEN, Default::default());
         Ok(())
     }
 
@@ -54,131 +124,142 @@ impl VM {
     }
 
     pub fn run(&mut self) -> aoc::Result<()> {
+        use Opcode::*;
         let input =
-            self.input.as_ref().ok_or_else(|| aoc::format_err!("No input channel connected"))?;
+            self.input.take().ok_or_else(|| aoc::format_err!("No input channel connected"))?;
         let output =
-            self.output.as_ref().ok_or_else(|| aoc::format_err!("No output channel connected"))?;
+            self.output.take().ok_or_else(|| aoc::format_err!("No output channel connected"))?;
+
+        macro_rules! store {
+            ($x:expr) => {
+                let value = $x;
+                let address = self.get_address()?;
+                self.assign_expand(address, value);
+            };
+        }
+
         loop {
-            let mut instruction = self.mem[self.ip];
-            log::debug!("ip := {}\tinstr := {:05}\trelbase := {}", self.ip, instruction, self.rp);
-            let opcode = (instruction % 100) as u8;
-            instruction /= 100;
-            let mut mode = [0u8; 3];
-            let mut args = [0; 3];
-            for i in 0..3 {
-                mode[i] = (instruction % 10) as u8;
-                let val = self.mem[self.ip + i + 1];
-                let val_addr = val as usize;
-                let rel_addr = (self.rp + val) as usize;
-                args[i] = match mode[i] {
-                    0 if val_addr < CODE_LEN => self.mem[val as usize],
-                    2 if rel_addr < CODE_LEN => self.mem[(self.rp + val) as usize],
-                    0 | 1 | 2 => val,
-                    m => return aoc::err!("Unkown mode encountered: {}", m),
-                };
-                instruction /= 10;
-            }
-
+            log::debug!(
+                "ip := {}\tinstr := {:05}\trelbase := {}",
+                self.ip,
+                self.mem[self.ip],
+                self.rp
+            );
+            let opcode = self.get_opcode()?;
             match opcode {
-                1 | 2 | 7 | 8 => {
-                    let val = self.mem[self.ip + 3];
-                    let address = match mode[2] {
-                        0 => val,
-                        1 => {
-                            return aoc::err!(
-                                "Writing results in immediate mode does not make sense."
-                            )
-                        }
-                        2 => self.rp + val,
-                        _ => unreachable!(),
-                    } as usize;
-
-                    self.mem[address] = match opcode {
-                        1 => args[0].checked_add(args[1]).unwrap(),
-                        2 => args[0].checked_mul(args[1]).unwrap(),
-                        7 => {
-                            if args[0] < args[1] {
-                                1
-                            } else {
-                                0
-                            }
-                        }
-                        8 => {
-                            if args[0] == args[1] {
-                                1
-                            } else {
-                                0
-                            }
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    let calc = match opcode {
-                        1 => format!("{} + {}", args[0], args[1]),
-                        2 => format!("{} * {}", args[0], args[1]),
-                        7 => format!("{} < {}", args[0], args[1]),
-                        8 => format!("{} == {}", args[0], args[1]),
-                        _ => unreachable!(),
-                    };
-
-                    log::debug!("intcode[{}] := {} = {}", address, calc, self.mem[address]);
-
-                    self.ip += 4;
+                // 1
+                Add => {
+                    let result = self.get_value()?.checked_add(self.get_value()?).unwrap();
+                    store!(result);
                 }
-                3 => {
-                    let val = self.mem[self.ip + 1];
-                    let address = match mode[0] {
-                        0 => val,
-                        1 => {
-                            return aoc::err!(
-                                "Reading input in immediate mode does not make sense."
-                            )
-                        }
-                        2 => self.rp + val,
-                        _ => unreachable!(),
-                    };
-
+                // 2
+                Mul => {
+                    let result = self.get_value()?.checked_mul(self.get_value()?).unwrap();
+                    store!(result);
+                }
+                // 3
+                Read => {
                     let value = match input.recv().unwrap() {
                         Signal::Value(x) => x,
                         Signal::Halting => break,
                     };
-
-                    self.mem[address as usize] = value;
-                    log::debug!("intcode[{}] <- {}", address, value);
-                    self.ip += 2;
+                    store!(value);
                 }
-                4 => {
-                    let out = args[0];
-                    let _ = output.send(Signal::Value(out));
-                    log::debug!("Output {}", out);
-                    self.ip += 2;
+                // 4
+                Write => {
+                    let _ = output.send(Signal::Value(self.get_value()?));
                 }
-                5 | 6 => {
-                    let b = match opcode {
-                        5 => args[0] != 0,
-                        6 => args[0] == 0,
+                // 5, 6
+                Jit | Jif => {
+                    let val = self.get_value()?;
+                    let cond = match opcode {
+                        Jit => val != 0,
+                        Jif => val == 0,
                         _ => unreachable!(),
                     };
-
-                    if b {
-                        self.ip = args[1] as usize
-                    } else {
-                        self.ip += 3;
+                    let value = self.get_value()?;
+                    if cond {
+                        self.ip = usize::try_from(value)?;
                     }
                 }
-                9 => {
-                    let offset = args[0];
-                    self.rp += offset;
-                    log::debug!("relative_base += {}", offset);
-                    self.ip += 2;
+                // 7, 8
+                Lt | Eq => {
+                    let a = self.get_value()?;
+                    let b = self.get_value()?;
+                    let cond = match opcode {
+                        Lt => a < b,
+                        Eq => a == b,
+                        _ => unreachable!(),
+                    };
+                    let address = self.get_address()?;
+                    if cond {
+                        self.assign_expand(address, 1);
+                    } else {
+                        self.assign_expand(address, 0);
+                    }
                 }
-                99 => break,
-                _ => return aoc::err!("Unknown opcode encountered: {}", opcode),
+                // 9
+                Set => self.rp += self.get_value()?,
+                // 99
+                Halt => break,
             }
         }
 
         let _ = output.send(Signal::Halting);
         Ok(())
+    }
+
+    fn get_opcode(&mut self) -> aoc::Result<Opcode> {
+        let mut instruction = self.mem[self.ip];
+        let opcode = Opcode::try_from(instruction % 100)?;
+        let mut mode = [Mode::Positional; 3];
+        instruction /= 100;
+        for m in &mut mode {
+            *m = Mode::try_from(instruction % 10)?;
+            instruction /= 10;
+        }
+
+        self.instr = Instruction { mp: 0, modes: mode };
+        self.ip += 1;
+        Ok(opcode)
+    }
+
+    fn get_value(&mut self) -> aoc::Result<Value> {
+        use Mode::*;
+        let address = match self.instr.modes[self.instr.mp] {
+            Positional | Relative => self.get_address()?,
+            Immediate => {
+                let ip = self.ip;
+                self.ip += 1;
+                self.instr.mp += 1;
+                ip
+            }
+        };
+        let value = self.mem.get(address).copied().unwrap_or_default();
+        log::debug!("[{}] = {}", address, value);
+        Ok(value)
+    }
+
+    fn get_address(&mut self) -> aoc::Result<usize> {
+        use Mode::*;
+        let address = match self.instr.modes[self.instr.mp] {
+            Positional => usize::try_from(self.mem[self.ip])?,
+            Relative => usize::try_from(self.rp + self.mem[self.ip])?,
+            Immediate => {
+                return aoc::err!("Writing results in immediate mode does not make sense.")
+            }
+        };
+        self.ip += 1;
+        self.instr.mp += 1;
+        Ok(address)
+    }
+
+    fn assign_expand(&mut self, address: usize, value: Value) {
+        if address >= self.mem.len() {
+            self.mem.resize_with(address + 1, Default::default);
+        }
+        self.mem[address] = value;
+        log::debug!("[{}] := {}", address, value);
     }
 
     pub fn spawn(mut self) -> (mpsc::Sender<Signal>, mpsc::Receiver<Signal>) {
