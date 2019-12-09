@@ -2,18 +2,6 @@ use std::{
     io::{self, Read, Write},
 };
 
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<dyn std::error::Error>::from(format!($($tt)*))) }
-}
-
-macro_rules! format_err {
-    ($($tt:tt)*) => { Box::<dyn std::error::Error>::from(format!($($tt)*)) }
-}
-
-mod aoc {
-    pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-}
-
 fn parse(s: String) -> aoc::Result<Input> {
     s
 }

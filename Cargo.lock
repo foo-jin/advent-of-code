@@ -87,9 +87,10 @@ dependencies = [
 name = "2019day09"
 version = "0.1.0"
 dependencies = [
+ "aoc 0.1.0",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "intcode 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rayon 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test-log 0.1.0",
 ]
 
@@ -100,6 +101,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "memchr 2.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "aoc"
+version = "0.1.0"
 
 [[package]]
 name = "atty"
@@ -432,6 +437,16 @@ dependencies = [
 name = "indexmap"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "intcode"
+version = "0.1.0"
+dependencies = [
+ "aoc 0.1.0",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rayon 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "test-log 0.1.0",
+]
 
 [[package]]
 name = "intrusive-collections"
