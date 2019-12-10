@@ -2,7 +2,7 @@ use std::{convert::TryFrom, sync::mpsc};
 
 pub type Value = i64;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Signal {
     Value(Value),
     Halting,
@@ -95,6 +95,12 @@ impl VM {
         VM::default()
     }
 
+    pub fn with_program(program: &str) -> aoc::Result<Self> {
+        let mut vm = VM::new();
+        vm.read_program(program)?;
+        Ok(vm)
+    }
+
     pub fn read_program(&mut self, program: &str) -> aoc::Result<()> {
         self.ip = 0;
         self.rp = 0;
@@ -104,6 +110,13 @@ impl VM {
             self.mem.push(x);
         }
         Ok(())
+    }
+
+    pub fn read_mem(&mut self, mem: &[Value]) {
+        self.ip = 0;
+        self.rp = 0;
+        self.mem.resize(mem.len(), 0);
+        self.mem.copy_from_slice(mem);
     }
 
     pub fn connect_io(
@@ -116,7 +129,9 @@ impl VM {
         Ok(())
     }
 
-    pub fn setup_io(&mut self) -> (mpsc::Sender<Signal>, mpsc::Receiver<Signal>) {
+    pub fn setup_io(
+        &mut self,
+    ) -> (mpsc::Sender<Signal>, mpsc::Receiver<Signal>) {
         let (tx, input) = mpsc::channel();
         let (output, rx) = mpsc::channel();
         self.connect_io(input, output).expect("Failed to connect IO channels");
@@ -125,10 +140,14 @@ impl VM {
 
     pub fn run(&mut self) -> aoc::Result<()> {
         use Opcode::*;
-        let input =
-            self.input.take().ok_or_else(|| aoc::format_err!("No input channel connected"))?;
-        let output =
-            self.output.take().ok_or_else(|| aoc::format_err!("No output channel connected"))?;
+        let input = self
+            .input
+            .take()
+            .ok_or_else(|| aoc::format_err!("No input channel connected"))?;
+        let output = self
+            .output
+            .take()
+            .ok_or_else(|| aoc::format_err!("No output channel connected"))?;
 
         macro_rules! store {
             ($x:expr) => {
@@ -149,12 +168,18 @@ impl VM {
             match opcode {
                 // 1
                 Add => {
-                    let result = self.get_value()?.checked_add(self.get_value()?).unwrap();
+                    let result = self
+                        .get_value()?
+                        .checked_add(self.get_value()?)
+                        .unwrap();
                     store!(result);
                 }
                 // 2
                 Mul => {
-                    let result = self.get_value()?.checked_mul(self.get_value()?).unwrap();
+                    let result = self
+                        .get_value()?
+                        .checked_mul(self.get_value()?)
+                        .unwrap();
                     store!(result);
                 }
                 // 3
@@ -246,7 +271,9 @@ impl VM {
             Positional => usize::try_from(self.mem[self.ip])?,
             Relative => usize::try_from(self.rp + self.mem[self.ip])?,
             Immediate => {
-                return aoc::err!("Writing results in immediate mode does not make sense.")
+                return aoc::err!(
+                    "Writing results in immediate mode does not make sense."
+                )
             }
         };
         self.ip += 1;
@@ -266,5 +293,101 @@ impl VM {
         let ends = self.setup_io();
         rayon::spawn(move || self.run().unwrap());
         ends
+    }
+}
+
+impl Signal {
+    pub fn is_value(&self) -> bool {
+        match *self {
+            Signal::Value(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test_log::new]
+    fn add_mul() -> aoc::Result<()> {
+        fn run_test(
+            vm: &mut VM,
+            input: &[Value],
+            expected: &[Value],
+        ) -> aoc::Result<()> {
+            vm.read_mem(input);
+            let _ = vm.setup_io();
+            vm.run()?;
+            assert_eq!(vm.mem.as_slice(), expected);
+            Ok(())
+        }
+
+        let mut vm = VM::new();
+        run_test(
+            &mut vm,
+            &[1, 9, 10, 3, 2, 3, 11, 0, 99, 30, 40, 50],
+            &[3500, 9, 10, 70, 2, 3, 11, 0, 99, 30, 40, 50],
+        )?;
+        run_test(&mut vm, &[1, 0, 0, 0, 99], &[2, 0, 0, 0, 99])?;
+        run_test(&mut vm, &[2, 3, 0, 3, 99], &[2, 3, 0, 6, 99])?;
+        run_test(&mut vm, &[2, 4, 4, 5, 99, 0], &[2, 4, 4, 5, 99, 9801])?;
+        run_test(
+            &mut vm,
+            &[1, 1, 1, 4, 99, 5, 6, 0, 99],
+            &[30, 1, 1, 4, 2, 5, 6, 0, 99],
+        )?;
+        Ok(())
+    }
+
+    #[test_log::new]
+    fn io_jump() -> aoc::Result<()> {
+        fn run_test(
+            vm: &mut VM,
+            program: &str,
+            input_value: Value,
+            expected: Value,
+        ) -> aoc::Result<()> {
+            vm.read_program(program)?;
+            let (input, output) = vm.setup_io();
+            input.send(Signal::Value(input_value))?;
+            vm.run()?;
+            let results = output.iter().filter(Signal::is_value).collect::<Vec<Signal>>();
+            assert_eq!(results.len(), 1);
+            assert_eq!(results[0], Signal::Value(expected));
+            Ok(())
+        }
+
+        let mut vm = VM::new();
+        run_test(&mut vm, "3,9,8,9,10,9,4,9,99,-1,8", 8, 1)?;
+        run_test(&mut vm, "3,9,8,9,10,9,4,9,99,-1,8", 7, 0)?;
+        run_test(&mut vm, "3,9,7,9,10,9,4,9,99,-1,8", 7, 1)?;
+        run_test(&mut vm, "3,9,7,9,10,9,4,9,99,-1,8", 8, 0)?;
+        run_test(&mut vm, "3,9,7,9,10,9,4,9,99,-1,8", 8, 0)?;
+        Ok(())
+    }
+
+    #[test_log::new]
+    fn diagnostic_program() -> aoc::Result<()> {
+        const DIAGNOSTIC: &str = include_str!("../../day05/input.txt");
+
+        let mut vm = VM::with_program(DIAGNOSTIC)?;
+        let (input, output) = vm.setup_io();
+        input.send(Signal::Value(1))?;
+        vm.run()?;
+        let results = output.iter().filter(Signal::is_value).collect::<Vec<Signal>>();
+        let n = results.len() - 1;
+        for &test_result in &results[..n] {
+            assert_eq!(test_result, Signal::Value(0));
+        }
+        assert_eq!(results[n], Signal::Value(4887191));
+
+        vm.read_program(DIAGNOSTIC)?;
+        let (input, output) = vm.setup_io();
+        input.send(Signal::Value(5))?;
+        vm.run()?;
+        let results = output.iter().collect::<Vec<Signal>>();
+        assert_eq!(results[0], Signal::Value(3419022));
+        Ok(())
     }
 }

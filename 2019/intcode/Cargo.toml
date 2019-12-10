@@ -10,4 +10,5 @@ rayon = "1.2.1"
 aoc = { path = "../../aoc/" }
 
 [dev-dependencies]
+env_logger = "0.6.0"
 test-log = { path = "../../test-log/" }
