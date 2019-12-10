@@ -101,6 +101,12 @@ impl VM {
         Ok(vm)
     }
 
+    pub fn with_mem(mem: &[Value]) -> Self {
+        let mut vm = VM::new();
+        vm.read_mem(mem);
+        vm
+    }
+
     pub fn read_program(&mut self, program: &str) -> aoc::Result<()> {
         self.ip = 0;
         self.rp = 0;
@@ -117,6 +123,10 @@ impl VM {
         self.rp = 0;
         self.mem.resize(mem.len(), 0);
         self.mem.copy_from_slice(mem);
+    }
+
+    pub fn mem(&self) -> &[Value] {
+        &self.mem
     }
 
     pub fn connect_io(
@@ -352,7 +362,8 @@ mod test {
             let (input, output) = vm.setup_io();
             input.send(Signal::Value(input_value))?;
             vm.run()?;
-            let results = output.iter().filter(Signal::is_value).collect::<Vec<Signal>>();
+            let results =
+                output.iter().filter(Signal::is_value).collect::<Vec<Signal>>();
             assert_eq!(results.len(), 1);
             assert_eq!(results[0], Signal::Value(expected));
             Ok(())
@@ -375,7 +386,8 @@ mod test {
         let (input, output) = vm.setup_io();
         input.send(Signal::Value(1))?;
         vm.run()?;
-        let results = output.iter().filter(Signal::is_value).collect::<Vec<Signal>>();
+        let results =
+            output.iter().filter(Signal::is_value).collect::<Vec<Signal>>();
         let n = results.len() - 1;
         for &test_result in &results[..n] {
             assert_eq!(test_result, Signal::Value(0));

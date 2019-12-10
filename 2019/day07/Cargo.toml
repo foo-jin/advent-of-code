@@ -9,6 +9,8 @@ log = "0.4.6"
 env_logger = "0.6.0"
 permutohedron = "0.2.4"
 rayon = "1.2.1"
+aoc = { path = "../../aoc/" }
+intcode = { path = "../intcode/" }
 
 [dev-dependencies]
 test-log = { path = "../../test-log/" }

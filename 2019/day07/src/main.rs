@@ -1,160 +1,28 @@
+use intcode::Signal;
 use std::{
     convert::TryFrom,
     io::{self, Read, Write},
-    str::FromStr,
     sync::mpsc,
 };
 
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<dyn std::error::Error>::from(format!($($tt)*))) }
-}
-
-mod aoc {
-    pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-}
-
-#[derive(Clone, Copy)]
-enum Signal {
-    Value(i32),
-    Halting,
-}
-
-#[derive(Clone)]
-struct IntCode(Vec<i32>);
-
-impl FromStr for IntCode {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.trim()
-            .split(',')
-            .map(str::parse::<i32>)
-            .collect::<Result<Vec<i32>, Self::Err>>()
-            .map(IntCode)
-    }
-}
-
-impl IntCode {
-    fn run(
-        &mut self,
-        input: mpsc::Receiver<Signal>,
-        output: mpsc::Sender<Signal>,
-    ) -> aoc::Result<()> {
-        let intcode = &mut self.0;
-        let mut ip = 0;
-        loop {
-            let mut instruction = intcode[ip];
-            let opcode = (instruction % 100) as u8;
-            instruction /= 100;
-            let mut mode = [0u8; 3];
-            for m in &mut mode {
-                *m = (instruction % 10) as u8;
-                if !(0..=1).contains(m) {
-                    return err!("Unkown mode encountered: {}", m);
-                }
-                instruction /= 10;
-            }
-
-            match opcode {
-                1 | 2 | 7 | 8 => {
-                    let mut args = [0; 2];
-                    for i in 0..2 {
-                        let val = intcode[ip + i + 1];
-                        args[i] = match mode[i] {
-                            0 => intcode[val as usize],
-                            1 => val,
-                            _ => unreachable!(),
-                        };
-                    }
-
-                    let out = intcode[ip + 3] as usize;
-                    intcode[out] = match opcode {
-                        1 => args[0] + args[1],
-                        2 => args[0] * args[1],
-                        7 =>
-                            if args[0] < args[1] {
-                                1
-                            } else {
-                                0
-                            },
-                        8 =>
-                            if args[0] == args[1] {
-                                1
-                            } else {
-                                0
-                            },
-                        _ => unreachable!(),
-                    };
-
-                    ip += 4;
-                },
-                3 => {
-                    let address = intcode[ip + 1] as usize;
-                    let val = match input.recv().unwrap() {
-                        Signal::Value(x) => x,
-                        Signal::Halting => break,
-                    };
-
-                    intcode[address] = val;
-                    ip += 2;
-                },
-                4 => {
-                    let address = intcode[ip + 1] as usize;
-                    let out = intcode[address];
-                    let _ = output.send(Signal::Value(out));
-                    log::debug!("Output {}", out);
-                    ip += 2;
-                },
-                5 | 6 => {
-                    let mut args = [0; 2];
-                    for i in 0..2 {
-                        let val = intcode[ip + i + 1];
-                        args[i] = match mode[i] {
-                            0 => intcode[val as usize],
-                            1 => val,
-                            _ => unreachable!(),
-                        };
-                    }
-
-                    let b = match opcode {
-                        5 => args[0] != 0,
-                        6 => args[0] == 0,
-                        _ => unreachable!(),
-                    };
-
-                    if b {
-                        ip = args[1] as usize
-                    } else {
-                        ip += 3;
-                    }
-                },
-                99 => break,
-                _ => return err!("Unknown opcode encountered: {}", opcode),
-            }
-        }
-
-        let _ = output.send(Signal::Halting);
-        Ok(())
-    }
-}
-
-fn level1(intcode: &IntCode) -> aoc::Result<u32> {
-    let mut phase_settings = vec![0, 1, 2, 3, 4];
+fn level1(original_vm: &intcode::VM) -> aoc::Result<u32> {
+    let mut phase_settings = [0, 1, 2, 3, 4];
     let heap = permutohedron::Heap::new(&mut phase_settings);
     let mut thruster_signal = 0;
 
     for permutation in heap {
         let mut amplified_input = 0;
-        for phase in permutation {
-            let mut ic = intcode.clone();
-            let (input, rx) = mpsc::channel();
-            let (tx, output) = mpsc::channel();
+        for &phase in &permutation {
+            let mut vm = intcode::VM::with_mem(original_vm.mem());
+            let (input, output) = vm.setup_io();
             input.send(Signal::Value(phase)).unwrap();
             input.send(Signal::Value(amplified_input)).unwrap();
-            ic.run(rx, tx)?;
+            vm.run()?;
             amplified_input = match output.recv().unwrap() {
                 Signal::Value(x) => x,
-                Signal::Halting => return err!("Amplifier halted before giving output"),
+                Signal::Halting => {
+                    return aoc::err!("Amplifier halted before giving output")
+                }
             };
         }
 
@@ -165,19 +33,20 @@ fn level1(intcode: &IntCode) -> aoc::Result<u32> {
     Ok(thruster_signal)
 }
 
-fn level2(intcode: &IntCode) -> aoc::Result<u32> {
-    let mut phase_settings = vec![5, 6, 7, 8, 9];
+fn level2(original_vm: &intcode::VM) -> aoc::Result<u32> {
+    let mut phase_settings = [5, 6, 7, 8, 9];
     let mut thruster_signal = 0;
     let heap = permutohedron::Heap::new(&mut phase_settings);
     for permutation in heap {
         let (init_tx, init_rx) = mpsc::channel();
         let mut tx = init_tx.clone();
         let mut rx = init_rx;
-        for phase in permutation {
-            let mut ic = intcode.clone();
+        for &phase in &permutation {
+            let mut vm = intcode::VM::with_mem(original_vm.mem());
             let (new_tx, new_rx) = mpsc::channel();
             let cloned_tx = new_tx.clone();
-            rayon::spawn(move || ic.run(rx, cloned_tx).unwrap());
+            vm.connect_io(rx, cloned_tx)?;
+            rayon::spawn(move || vm.run().unwrap());
             tx.send(Signal::Value(phase)).unwrap();
             tx = new_tx;
             rx = new_rx;
@@ -204,12 +73,12 @@ fn level2(intcode: &IntCode) -> aoc::Result<u32> {
 fn solve() -> aoc::Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
-    let parsed = input.parse()?;
+    let vm = intcode::VM::with_program(&input)?;
 
-    let some = level1(&parsed)?;
+    let some = level1(&vm)?;
     writeln!(io::stderr(), "level 1: {}", some)?;
 
-    let thing = level2(&parsed)?;
+    let thing = level2(&vm)?;
     writeln!(io::stderr(), "level 2: {}", thing)?;
 
     // stdout is used to submit solutions
@@ -240,11 +109,11 @@ mod test {
 
     #[test_log::new]
     fn sanity() -> aoc::Result<()> {
-        let input = INPUT.parse()?;
-        let result = level1(&input)?;
+        let vm = intcode::VM::with_program(INPUT)?;
+        let result = level1(&vm)?;
         assert_eq!(result, 18812);
 
-        let result = level2(&input)?;
+        let result = level2(&vm)?;
         assert_eq!(result, 25534964);
         Ok(())
     }
