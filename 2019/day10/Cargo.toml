@@ -9,6 +9,7 @@ log = "0.4.6"
 env_logger = "0.6.0"
 aoc = { path = "../../aoc/" }
 intcode = { path = "../intcode/" }
+num-rational = "0.2.2"
 
 [dev-dependencies]
 test-log = { path = "../../test-log/" }

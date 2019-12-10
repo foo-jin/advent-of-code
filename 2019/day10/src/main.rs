@@ -1,9 +1,46 @@
+use num_rational::Ratio;
 use std::{
-    collections::HashSet,
+    cmp::Ordering,
+    collections::{BTreeMap, HashMap, HashSet},
+    convert::TryFrom,
     io::{self, Read, Write},
 };
 
 type Point = (usize, usize);
+
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+enum Angle {
+    Up,
+    Right(Ratio<i32>),
+    Down,
+    Left(Ratio<i32>),
+}
+
+impl Ord for Angle {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use Angle::*;
+
+        // clockwise order
+        match (self, other) {
+            (Up, Up) => Ordering::Equal,
+            (_, Up) => Ordering::Greater,
+            (Up, _) => Ordering::Less,
+            (Right(r1), Right(r2)) => r1.cmp(r2),
+            (_, Right(_)) => Ordering::Greater,
+            (Right(_), _) => Ordering::Less,
+            (Left(_), Down) => Ordering::Greater,
+            (Down, Down) => Ordering::Equal,
+            (Down, Left(_)) => Ordering::Less,
+            (Left(r1), Left(r2)) => r1.cmp(r2),
+        }
+    }
+}
+
+impl PartialOrd for Angle {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 fn parse(s: &str) -> aoc::Result<Vec<Point>> {
     let meteors = s
@@ -21,22 +58,78 @@ fn parse(s: &str) -> aoc::Result<Vec<Point>> {
     Ok(meteors)
 }
 
-fn level1(meteors: &[Point]) -> aoc::Result<u32> {
+fn level1(meteors: &[Point]) -> aoc::Result<usize> {
+    use Angle::*;
+
+    let mut max_count = 0;
+    let mut location = (0, 0);
+    let mut vaporization_plan = BTreeMap::new();
     for &(x1, y1) in meteors {
-        let mut angles = HashSet::new();
+        log::debug!("============= {:?} =============", (x1, y1));
+        let mut angles = BTreeMap::new();
         for &(x2, y2) in meteors {
             if (x2, y2) == (x1, y1) {
                 continue;
             }
             let (x1, y1, x2, y2) = (x1 as i32, y1 as i32, x2 as i32, y2 as i32);
-            let dx = (x2 - x1) as f32;
-            let dy = (y2 - y1) as f32;
-            let theta = f32::atan2(dy, dx);
-            let dx = (x2 - x1) as f32;
-            angles.insert(theta);
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+            let dist = (dx.abs() + dy.abs()) as u32;
+            let angle = match (dx, dy) {
+                (0, dy) if dy > 0 => Down,
+                (0, dy) if dy < 0 => Up,
+                (0, _) => unreachable!(),
+                (dx, dy) => {
+                    let r = Ratio::new(dy, dx);
+                    if dx > 0 {
+                        Right(r)
+                    } else {
+                        Left(r)
+                    }
+                }
+            };
+            angles.entry(angle).or_insert_with(Vec::new).push((dist, (x2, y2)));
+        }
+        let count = angles.len();
+        log::debug!("count: {}", count);
+        if count > max_count {
+            max_count = count;
+            location = (x1, y1);
+            vaporization_plan = angles;
         }
     }
-    Ok(0)
+
+    log::debug!("IMS planted at {:?}", location);
+
+    for (_angle, meteors) in &mut vaporization_plan {
+        meteors.sort();
+        meteors.reverse();
+    }
+
+    let mut destroyed = 0;
+    let mut coord = (0, 0);
+    loop {
+        let mut done = true;
+        for (_angle, meteors) in &mut vaporization_plan {
+            match meteors.pop() {
+                Some((_d, p)) => {
+                    done = false;
+                    destroyed += 1;
+                    if destroyed == 200 {
+                        coord = p;
+                    }
+                    log::debug!("vaporizing astroid #{} at {:?}", destroyed, p);
+                }
+                None => (),
+            }
+        }
+
+        if done {
+            break;
+        }
+    }
+
+    usize::try_from(coord.0 * 100 + coord.1).map_err(Into::into)
 }
 
 fn solve() -> aoc::Result<()> {
@@ -78,9 +171,31 @@ mod test {
 
     #[test_log::new]
     fn level1_examples() -> aoc::Result<()> {
-        let input = parse("asdf")?;
+        let input = parse(
+            "\
+.#..##.###...#######
+##.############..##.
+.#.######.########.#
+.###.#######.####.#.
+#####.##.#.##.###.##
+..#####..#.#########
+####################
+#.####....###.#.#.##
+##.#################
+#####.##.###..####..
+..######..##.#######
+####.##.####...##..#
+.#####..#.######.###
+##...#.##########...
+#.##########.#######
+.####.#.###.###.#.##
+....##.##.###..#####
+.#.#.###########.###
+#.#.#.#####.####.###
+###.##.####.##.#..##",
+        )?;
         let result = level1(&input)?;
-        assert_eq!(result, ());
+        assert_eq!(result, 802);
         Ok(())
     }
 }
