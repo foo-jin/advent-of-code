@@ -40,7 +40,7 @@ fn level2(s: &str) -> u32 {
                 mass += diff;
                 diff = i32::max(0, diff / 3 - 2);
             }
-	    mass as u32
+            mass as u32
         })
         .sum()
 }

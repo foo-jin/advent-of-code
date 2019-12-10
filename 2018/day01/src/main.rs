@@ -10,14 +10,13 @@ type AocResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 fn part2_fancy(s: &str) -> i32 {
     use std::iter;
 
-    let vals = s
-        .lines()
-        .map(str::parse::<i32>)
-        .map(Result::unwrap)
-        .scan(0, |state, x| {
+    let vals = s.lines().map(str::parse::<i32>).map(Result::unwrap).scan(
+        0,
+        |state, x| {
             *state += x;
             Some(*state)
-        });
+        },
+    );
     let mut cum_sums = iter::once(0).chain(vals).collect::<Vec<i32>>();
     let mut freq_set = HashSet::new();
     for &x in &cum_sums {
@@ -33,10 +32,7 @@ fn part2_fancy(s: &str) -> i32 {
 
     let mut groups: HashMap<i32, Vec<(usize, i32)>> = HashMap::new();
     for (i, freq) in cum_sums.into_iter().enumerate() {
-        groups
-            .entry(freq % shift.abs())
-            .or_default()
-            .push((i, freq));
+        groups.entry(freq % shift.abs()).or_default().push((i, freq));
     }
 
     let mut min_index = 0;
@@ -56,7 +52,10 @@ fn part2_fancy(s: &str) -> i32 {
                 (cur.0, Some(prev.1))
             };
 
-            if min_diff.is_none() || diff < min_diff || (diff == min_diff && index < min_index) {
+            if min_diff.is_none()
+                || diff < min_diff
+                || (diff == min_diff && index < min_index)
+            {
                 min_index = index;
                 min_diff = diff;
                 min_freq = freq;

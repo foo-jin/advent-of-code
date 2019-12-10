@@ -43,18 +43,29 @@ trait IterExt: Iterator {
             .map(|first| {
                 let first_p = f(&first);
 
-                self.fold((first_p, first, false), |(sel_p, sel, duplicate), x| {
-                    let x_p = f(&x);
-                    if x_p < sel_p {
-                        (x_p, x, false)
-                    } else if x_p == sel_p {
-                        (sel_p, sel, true)
-                    } else {
-                        (sel_p, sel, duplicate)
-                    }
-                })
+                self.fold(
+                    (first_p, first, false),
+                    |(sel_p, sel, duplicate), x| {
+                        let x_p = f(&x);
+                        if x_p < sel_p {
+                            (x_p, x, false)
+                        } else if x_p == sel_p {
+                            (sel_p, sel, true)
+                        } else {
+                            (sel_p, sel, duplicate)
+                        }
+                    },
+                )
             })
-            .and_then(|(_sel_p, sel, duplicate)| if !duplicate { Some(sel) } else { None })
+            .and_then(
+                |(_sel_p, sel, duplicate)| {
+                    if !duplicate {
+                        Some(sel)
+                    } else {
+                        None
+                    }
+                },
+            )
     }
 }
 

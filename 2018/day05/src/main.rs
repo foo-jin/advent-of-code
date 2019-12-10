@@ -10,7 +10,7 @@ fn full_reaction(chars: impl Iterator<Item = char>) -> String {
         match stack.last() {
             Some(b) if opposites(a, *b) => {
                 stack.pop();
-            }
+            },
             _ => stack.push(a),
         };
     }
@@ -30,7 +30,9 @@ fn level2(s: &str) -> usize {
     (b'a'..b'z' + 1)
         .into_par_iter()
         .map(|c| c as char)
-        .map(|c| full_reaction(chars.clone().filter(|a| !a.eq_ignore_ascii_case(&c))))
+        .map(|c| {
+            full_reaction(chars.clone().filter(|a| !a.eq_ignore_ascii_case(&c)))
+        })
         .map(|s| s.len())
         .min()
         .unwrap()

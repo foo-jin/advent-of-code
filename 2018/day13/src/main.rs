@@ -18,10 +18,10 @@ struct Direction([i8; 2]);
 
 #[allow(non_upper_case_globals)]
 impl Direction {
-    const Up: Direction = Direction([0, -1]);
     const Down: Direction = Direction([0, 1]);
     const Left: Direction = Direction([-1, 0]);
     const Right: Direction = Direction([1, 0]);
+    const Up: Direction = Direction([0, -1]);
 
     fn lr_turn(&mut self) {
         let [x, y] = self.0;
@@ -71,13 +71,7 @@ struct Cart {
 impl Cart {
     fn new(id: usize, pos: Point, facing: Direction) -> Self {
         let turn = [Turn::Left, Turn::Straight, Turn::Right];
-        Cart {
-            id,
-            pos,
-            facing,
-            turn,
-            collided: false,
-        }
+        Cart { id, pos, facing, turn, collided: false }
     }
 
     fn update(&mut self) -> Result<(), Box<dyn Error>> {
@@ -94,7 +88,7 @@ impl Cart {
                 let turn = self.turn[0];
                 self.turn.rotate_left(1);
                 self.facing += turn;
-            }
+            },
             Node::LRTurn => self.facing.lr_turn(),
             Node::RLTurn => self.facing.rl_turn(),
         }
@@ -139,19 +133,19 @@ impl str::FromStr for Graph {
                         };
                         carts.push(Cart::new(id, pos, dir));
                         continue;
-                    }
+                    },
                     ' ' | '-' | '|' => continue,
-                    c => return err!("unexpected character while parsing graph: {}", c),
+                    c =>
+                        return err!(
+                            "unexpected character while parsing graph: {}",
+                            c
+                        ),
                 };
                 nodes.insert(pos, node);
             }
         }
         let positions = carts.iter().map(|c| c.pos).collect();
-        let mut graph = Graph {
-            nodes,
-            carts,
-            positions,
-        };
+        let mut graph = Graph { nodes, carts, positions };
         graph.sort_carts();
         Ok(graph)
     }
@@ -194,7 +188,8 @@ impl Graph {
             }
         }
 
-        self.carts = self.carts.iter().cloned().filter(|c| !c.collided).collect();
+        self.carts =
+            self.carts.iter().cloned().filter(|c| !c.collided).collect();
         self.sort_carts();
 
         Ok(first)

@@ -68,7 +68,7 @@ fn is_passwordv2(mut pw: u32) -> bool {
             (false, 1) => {
                 adjacent = true;
                 grouplen = 0
-            }
+            },
             (false, _) => grouplen = 0,
             (true, _) => grouplen += 1,
         }

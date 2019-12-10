@@ -90,29 +90,23 @@ impl Rectangle {
     fn new(top_left: Point, width: u32, height: u32) -> Self {
         let Point { x, y } = top_left;
         let bottom_right = Point::new(x + width, y + height);
-        Rectangle {
-            top_left,
-            bottom_right,
-            width,
-            height,
-        }
+        Rectangle { top_left, bottom_right, width, height }
     }
 
     fn iter(self) -> impl Iterator<Item = Point> {
         use std::iter;
 
         let Point { x: left, y: top } = self.top_left;
-        let Point {
-            x: right,
-            y: bottom,
-        } = self.bottom_right;
+        let Point { x: right, y: bottom } = self.bottom_right;
         (top..bottom)
             .flat_map(move |y| iter::repeat(y).zip(left..right))
             .map(|(y, x)| Point::new(x, y))
     }
 
     fn overlaps(&self, other: &Rectangle) -> Option<Rectangle> {
-        if self.top_left <= other.bottom_right && other.top_left <= self.bottom_right {
+        if self.top_left <= other.bottom_right
+            && other.top_left <= self.bottom_right
+        {
             let left = self.top_left.x.max(other.top_left.x);
             let right = self.bottom_right.x.min(other.bottom_right.x);
             let top = self.top_left.y.max(other.top_left.y);
@@ -183,10 +177,8 @@ mod test {
     #[test]
     fn claim_parse() {
         let input = "#123 @ 3,2: 5x4";
-        let expected = Claim {
-            id: 123,
-            rect: Rectangle::new(Point { x: 3, y: 2 }, 5, 4),
-        };
+        let expected =
+            Claim { id: 123, rect: Rectangle::new(Point { x: 3, y: 2 }, 5, 4) };
         let result = input.parse::<Claim>().unwrap();
         assert_eq!(result, expected)
     }

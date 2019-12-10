@@ -32,10 +32,7 @@ impl ops::Add<Vector> for Point {
     type Output = Point;
 
     fn add(self, v: Vector) -> Self::Output {
-        Point {
-            x: self.x + v.dx,
-            y: self.y + v.dy,
-        }
+        Point { x: self.x + v.dx, y: self.y + v.dy }
     }
 }
 

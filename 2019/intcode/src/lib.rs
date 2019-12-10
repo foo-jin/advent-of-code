@@ -183,7 +183,7 @@ impl VM {
                         .checked_add(self.get_value()?)
                         .unwrap();
                     store!(result);
-                }
+                },
                 // 2
                 Mul => {
                     let result = self
@@ -191,7 +191,7 @@ impl VM {
                         .checked_mul(self.get_value()?)
                         .unwrap();
                     store!(result);
-                }
+                },
                 // 3
                 Read => {
                     let value = match input.recv().unwrap() {
@@ -199,11 +199,11 @@ impl VM {
                         Signal::Halting => break,
                     };
                     store!(value);
-                }
+                },
                 // 4
                 Write => {
                     let _ = output.send(Signal::Value(self.get_value()?));
-                }
+                },
                 // 5, 6
                 Jit | Jif => {
                     let val = self.get_value()?;
@@ -216,7 +216,7 @@ impl VM {
                     if cond {
                         self.ip = usize::try_from(value)?;
                     }
-                }
+                },
                 // 7, 8
                 Lt | Eq => {
                     let a = self.get_value()?;
@@ -232,7 +232,7 @@ impl VM {
                     } else {
                         self.assign_expand(address, 0);
                     }
-                }
+                },
                 // 9
                 Set => self.rp += self.get_value()?,
                 // 99
@@ -268,7 +268,7 @@ impl VM {
                 self.ip += 1;
                 self.instr.mp += 1;
                 ip
-            }
+            },
         };
         let value = self.mem.get(address).copied().unwrap_or_default();
         log::debug!("[{}] = {}", address, value);
@@ -280,11 +280,10 @@ impl VM {
         let address = match self.instr.modes[self.instr.mp] {
             Positional => usize::try_from(self.mem[self.ip])?,
             Relative => usize::try_from(self.rp + self.mem[self.ip])?,
-            Immediate => {
+            Immediate =>
                 return aoc::err!(
                     "Writing results in immediate mode does not make sense."
-                )
-            }
+                ),
         };
         self.ip += 1;
         self.instr.mp += 1;

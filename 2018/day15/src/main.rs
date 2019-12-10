@@ -43,21 +43,11 @@ struct World {
 
 impl World {
     fn game_over(&self) -> bool {
-        self.em
-            .alive
-            .iter()
-            .filter(|(_s, count)| **count > 0)
-            .count()
-            == 1
+        self.em.alive.iter().filter(|(_s, count)| **count > 0).count() == 1
     }
 
     fn remaining_hp(&self) -> u32 {
-        self.em
-            .units
-            .iter()
-            .flatten()
-            .map(|u| u32::from(u.hp))
-            .sum()
+        self.em.units.iter().flatten().map(|u| u32::from(u.hp)).sum()
     }
 
     fn neighbours(p: Point) -> impl Iterator<Item = Point> {
@@ -70,7 +60,10 @@ impl World {
             .chain(iter::once([x, y + 1]))
     }
 
-    fn free_neighbours(grid: &HashMap<Point, State>, p: Point) -> impl Iterator<Item = Point> + '_ {
+    fn free_neighbours(
+        grid: &HashMap<Point, State>,
+        p: Point,
+    ) -> impl Iterator<Item = Point> + '_ {
         World::neighbours(p).filter(move |p| {
             let state = grid.get(p);
             state.map(|s| s.is_free()).unwrap_or(false)
@@ -90,8 +83,13 @@ impl World {
     }
 
     fn evolve(self) -> Self {
-        fn attack(grid: &mut HashMap<Point, State>, em: &mut EntityManager, unit: Unit) {
-            let target = World::enemy_neighbours(&grid, &em, unit).min_by_key(|u| u.hp);
+        fn attack(
+            grid: &mut HashMap<Point, State>,
+            em: &mut EntityManager,
+            unit: Unit,
+        ) {
+            let target =
+                World::enemy_neighbours(&grid, &em, unit).min_by_key(|u| u.hp);
 
             if let Some(mut target) = target {
                 target.hp = target.hp.saturating_sub(u16::from(unit.ap));
@@ -102,25 +100,13 @@ impl World {
             }
         }
 
-        let World {
-            dimensions,
-            mut units,
-            mut grid,
-            mut round,
-            mut em,
-        } = self;
+        let World { dimensions, mut units, mut grid, mut round, mut em } = self;
         units = units.drain(..).filter(|u| !em[*u].is_none()).collect();
         units.sort_by_key(|u| em[*u].map(|u| u.pos).map(|[x, y]| [y, x]));
 
         for u in &units {
             if em.alive.iter().filter(|(_s, count)| **count > 0).count() == 1 {
-                return World {
-                    dimensions,
-                    units,
-                    grid,
-                    round,
-                    em,
-                };
+                return World { dimensions, units, grid, round, em };
             }
             let mut unit = match em[*u] {
                 Some(unit) => unit,
@@ -161,7 +147,10 @@ impl World {
                     next.push((p, first));
                 }
 
-                queue.extend(World::free_neighbours(&grid, p).map(|q| (q, gen + 1, first)));
+                queue.extend(
+                    World::free_neighbours(&grid, p)
+                        .map(|q| (q, gen + 1, first)),
+                );
             }
 
             next.sort_by_key(|&([x1, y1], [x, y])| ([y1, x1], [y, x]));
@@ -170,7 +159,7 @@ impl World {
             match next.first().cloned() {
                 None => {
                     continue;
-                }
+                },
                 Some((_, p)) => {
                     let cur = grid
                         .get_mut(&unit.pos)
@@ -179,20 +168,14 @@ impl World {
                     unit.pos = p;
                     *grid.get_mut(&p).unwrap() = State::Taken(unit.id);
                     em.update(unit);
-                }
+                },
             }
 
             attack(&mut grid, &mut em, unit);
         }
 
         round += 1;
-        World {
-            dimensions,
-            grid,
-            round,
-            units,
-            em,
-        }
+        World { dimensions, grid, round, units, em }
     }
 
     fn outcome(&self) -> u32 {
@@ -252,11 +235,12 @@ impl fmt::Display for World {
                     State::Free => ".",
                     State::Wall => "#",
                     State::Taken(id) => {
-                        let unit = self.em[id].expect("dead units should occur in grid");
+                        let unit = self.em[id]
+                            .expect("dead units should occur in grid");
                         units.push(unit);
                         write!(f, "{}", unit.species)?;
                         continue;
-                    }
+                    },
                 };
                 write!(f, "{}", c)?;
             }
@@ -317,7 +301,7 @@ impl EntityManager {
                     .get_mut(&unit.species)
                     .expect("species should have been registered");
                 *count = count.saturating_sub(1);
-            }
+            },
             _ => self.units[unit.id] = Some(unit),
         }
     }
@@ -366,13 +350,7 @@ impl fmt::Display for Unit {
 
 impl Unit {
     fn new(id: UnitID, species: Species, pos: Point, ap: u8) -> Self {
-        Unit {
-            id,
-            hp: 200,
-            ap,
-            species,
-            pos,
-        }
+        Unit { id, hp: 200, ap, species, pos }
     }
 }
 

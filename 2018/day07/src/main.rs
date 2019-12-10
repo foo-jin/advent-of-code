@@ -42,8 +42,7 @@ impl World {
             self.workers_available -= 1;
             let dt = n - b'A' + 1;
             let dt = self.base_duration + u32::from(dt);
-            self.schedule
-                .push(cmp::Reverse((self.current_time + dt, n)));
+            self.schedule.push(cmp::Reverse((self.current_time + dt, n)));
         }
     }
 
@@ -79,14 +78,15 @@ fn parse_graph(s: &str) -> Graph {
 
 fn root_graph<'a>(graph: &'a Graph) -> impl Iterator<Item = Step> + 'a {
     graph.nodes().filter(move |n| {
-        graph
-            .neighbors_directed(*n, Direction::Incoming)
-            .next()
-            .is_none()
+        graph.neighbors_directed(*n, Direction::Incoming).next().is_none()
     })
 }
 
-fn remove_root_node(graph: &mut Graph, root_nodes: &mut MinHeap<Step>, n: Step) {
+fn remove_root_node(
+    graph: &mut Graph,
+    root_nodes: &mut MinHeap<Step>,
+    n: Step,
+) {
     for m in graph.neighbors_directed(n, Direction::Outgoing) {
         if graph.neighbors_directed(m, Direction::Incoming).count() == 1 {
             root_nodes.push(cmp::Reverse(m));
@@ -97,9 +97,8 @@ fn remove_root_node(graph: &mut Graph, root_nodes: &mut MinHeap<Step>, n: Step) 
 }
 
 fn level1(mut graph: Graph) -> String {
-    let mut queue = root_graph(&graph)
-        .map(cmp::Reverse)
-        .collect::<MinHeap<Step>>();
+    let mut queue =
+        root_graph(&graph).map(cmp::Reverse).collect::<MinHeap<Step>>();
     let mut ordering = Vec::new();
 
     while let Some(n) = queue.pop().map(|r| r.0) {

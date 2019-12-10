@@ -50,7 +50,7 @@ fn recursive_descent(grid: &mut Grid, re: &str) -> Result<()> {
             '|' => p = *stack.last().unwrap(),
             ')' => {
                 let _ = stack.pop();
-            }
+            },
             dir => {
                 let [x, y] = p;
                 let pn = match dir {
@@ -61,11 +61,11 @@ fn recursive_descent(grid: &mut Grid, re: &str) -> Result<()> {
                     _ => {
                         log::error!("unknown direction {}", dir);
                         return err!("unknown direction: {}", dir);
-                    }
+                    },
                 };
                 grid.entry(p).or_default().insert(pn);
                 p = pn;
-            }
+            },
         }
     }
 
@@ -151,14 +151,8 @@ fn debug_print(grid: &Grid) -> Result<()> {
 }
 
 fn connected(grid: &Grid, p: Point, q: Point) -> bool {
-    let b1 = grid
-        .get(&p)
-        .map(|neigh| neigh.contains(&q))
-        .unwrap_or(false);
-    let b2 = grid
-        .get(&q)
-        .map(|neigh| neigh.contains(&p))
-        .unwrap_or(false);
+    let b1 = grid.get(&p).map(|neigh| neigh.contains(&q)).unwrap_or(false);
+    let b2 = grid.get(&q).map(|neigh| neigh.contains(&p)).unwrap_or(false);
     b1 || b2
 }
 
@@ -193,7 +187,8 @@ mod test {
     }
 
     const E4: &str = r"^ESSWWN(E|NNENN(EESS(WNSE|)SSS|WWWSSSSE(SW|NNNE)))$";
-    const E5: &str = r"^WSSEESWWWNW(S|NENNEEEENN(ESSSSW(NWSW|SSEN)|WSWWN(E|WWS(E|SS))))$";
+    const E5: &str =
+        r"^WSSEESWWWNW(S|NENNEEEENN(ESSSSW(NWSW|SSEN)|WSWWN(E|WWS(E|SS))))$";
 
     #[test]
     fn level1_advanced() {

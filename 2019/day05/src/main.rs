@@ -64,38 +64,36 @@ fn run_intcode(intcode: &mut [i32], inputs: &[i32]) -> i32 {
                 intcode[out] = match opcode {
                     1 => args[0] + args[1],
                     2 => args[0] * args[1],
-                    7 => {
+                    7 =>
                         if args[0] < args[1] {
                             1
                         } else {
                             0
-                        }
-                    }
-                    8 => {
+                        },
+                    8 =>
                         if args[0] == args[1] {
                             1
                         } else {
                             0
-                        }
-                    }
+                        },
                     _ => unreachable!(),
                 };
 
                 ip += 4;
-            }
+            },
             3 => {
                 let address = intcode[ip + 1] as usize;
                 intcode[address] = inputs[head];
                 head += 1;
                 ip += 2;
-            }
+            },
             4 => {
                 let address = intcode[ip + 1] as usize;
                 let out = intcode[address];
                 eprintln!("Output {}", out);
                 output = out;
                 ip += 2;
-            }
+            },
             5 | 6 => {
                 let mut args = [0; 2];
                 for i in 0..2 {
@@ -118,7 +116,7 @@ fn run_intcode(intcode: &mut [i32], inputs: &[i32]) -> i32 {
                 } else {
                     ip += 3;
                 }
-            }
+            },
             99 => return output,
             _ => panic!("Unknown opcode encountered: {}", opcode),
         }

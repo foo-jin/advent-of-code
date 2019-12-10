@@ -14,7 +14,10 @@ fn power_level(x: u32, y: u32, serial: u32) -> i32 {
     powlevel as i32 - 5
 }
 
-fn max_subgrid(serial: u32, subgrids: impl IntoIterator<Item = usize>) -> (usize, usize, usize) {
+fn max_subgrid(
+    serial: u32,
+    subgrids: impl IntoIterator<Item = usize>,
+) -> (usize, usize, usize) {
     let mut sum = [[0; GRID_SIZE + 1]; GRID_SIZE + 1];
     for y in 1..=GRID_SIZE {
         for x in 1..=GRID_SIZE {
@@ -31,7 +34,8 @@ fn max_subgrid(serial: u32, subgrids: impl IntoIterator<Item = usize>) -> (usize
     for s in subgrids {
         for y in s..=GRID_SIZE {
             for x in s..=GRID_SIZE {
-                let val = sum[y][x] - sum[y - s][x] - sum[y][x - s] + sum[y - s][x - s];
+                let val = sum[y][x] - sum[y - s][x] - sum[y][x - s]
+                    + sum[y - s][x - s];
                 if Some(val) > max_val {
                     max_val = Some(val);
                     coords = Some((x - s + 1, y - s + 1, s));

@@ -69,7 +69,11 @@ fn level2(s: &str) -> aoc::Result<u32> {
     }
 }
 
-fn step(mut pos: Pos, mut dir: Direction, cmd: &str) -> aoc::Result<(Direction, Pos)> {
+fn step(
+    mut pos: Pos,
+    mut dir: Direction,
+    cmd: &str,
+) -> aoc::Result<(Direction, Pos)> {
     use Direction::*;
 
     let (turn, distance) = cmd.trim().split_at(1);

@@ -76,18 +76,14 @@ fn level2(bots: &[NanoBot]) -> u32 {
                 shift(&mut y_min, &mut y_max, p[1], s);
                 shift(&mut z_min, &mut z_max, p[2], s);
                 step /= 2;
-            }
+            },
         }
     }
 }
 
 fn minmax(bots: &[NanoBot], i: usize) -> (i64, i64) {
     use itertools::Itertools;
-    bots.iter()
-        .map(|b| b.pos[i])
-        .minmax()
-        .into_option()
-        .unwrap()
+    bots.iter().map(|b| b.pos[i]).minmax().into_option().unwrap()
 }
 
 fn shift(a: &mut i64, b: &mut i64, x: i64, step: i64) {

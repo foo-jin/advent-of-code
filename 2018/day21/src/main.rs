@@ -77,11 +77,11 @@ impl VM {
                         e.insert(val);
                         best = val;
                         log::trace!("NEW ipc: {}, {}", self.ipc, val);
-                    }
+                    },
                     Entry::Occupied(_) => {
                         log::trace!("DUPL ipc: {}, {}", self.ipc, val);
                         return best;
-                    }
+                    },
                 }
             }
         }
@@ -107,10 +107,7 @@ impl FromStr for Program {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self> {
-        let mut program = Program {
-            ipreg: Register::R0,
-            instr: vec![],
-        };
+        let mut program = Program { ipreg: Register::R0, instr: vec![] };
         for line in s.trim().lines() {
             if line.starts_with("#ip ") {
                 let v = line[4..].parse::<Value>()?;
@@ -220,48 +217,42 @@ impl Instruction {
             Bori { a, b } => regs[a] | b,
             Setr { a } => regs[a],
             Seti { a } => a,
-            Gtir { a, b } => {
+            Gtir { a, b } =>
                 if a > regs[b] {
                     1
                 } else {
                     0
-                }
-            }
-            Gtri { a, b } => {
+                },
+            Gtri { a, b } =>
                 if regs[a] > b {
                     1
                 } else {
                     0
-                }
-            }
-            Gtrr { a, b } => {
+                },
+            Gtrr { a, b } =>
                 if regs[a] > regs[b] {
                     1
                 } else {
                     0
-                }
-            }
-            Eqir { a, b } => {
+                },
+            Eqir { a, b } =>
                 if a == regs[b] {
                     1
                 } else {
                     0
-                }
-            }
-            Eqri { a, b } => {
+                },
+            Eqri { a, b } =>
                 if regs[a] == b {
                     1
                 } else {
                     0
-                }
-            }
-            Eqrr { a, b } => {
+                },
+            Eqrr { a, b } =>
                 if regs[a] == regs[b] {
                     1
                 } else {
                     0
-                }
-            }
+                },
         };
 
         regs[self.output] = result;
@@ -284,50 +275,31 @@ impl FromStr for Instruction {
         let caps = RE
             .captures(s)
             .ok_or_else(|| format_err!("invalid instruction: '{:?}'", s))?;
-        let (a, b, c) = (caps["a"].parse()?, caps["b"].parse()?, caps["c"].parse()?);
+        let (a, b, c) =
+            (caps["a"].parse()?, caps["b"].parse()?, caps["c"].parse()?);
         let mkreg = Register::from_value;
         let opcode = match &caps["opcode"] {
-            "addr" => Addr {
-                a: mkreg(a)?,
-                b: mkreg(b)?,
-            },
+            "addr" => Addr { a: mkreg(a)?, b: mkreg(b)? },
             "addi" => Addi { a: mkreg(a)?, b },
-            "mulr" => Mulr {
-                a: mkreg(a)?,
-                b: mkreg(b)?,
-            },
+            "mulr" => Mulr { a: mkreg(a)?, b: mkreg(b)? },
             "muli" => Muli { a: mkreg(a)?, b },
-            "banr" => Banr {
-                a: mkreg(a)?,
-                b: mkreg(b)?,
-            },
+            "banr" => Banr { a: mkreg(a)?, b: mkreg(b)? },
             "bani" => Bani { a: mkreg(a)?, b },
-            "borr" => Borr {
-                a: mkreg(a)?,
-                b: mkreg(b)?,
-            },
+            "borr" => Borr { a: mkreg(a)?, b: mkreg(b)? },
             "bori" => Bori { a: mkreg(a)?, b },
             "setr" => Setr { a: mkreg(a)? },
             "seti" => Seti { a },
             "gtir" => Gtir { a, b: mkreg(b)? },
             "gtri" => Gtri { a: mkreg(a)?, b },
-            "gtrr" => Gtrr {
-                a: mkreg(a)?,
-                b: mkreg(b)?,
-            },
+            "gtrr" => Gtrr { a: mkreg(a)?, b: mkreg(b)? },
             "eqir" => Eqir { a, b: mkreg(b)? },
             "eqri" => Eqri { a: mkreg(a)?, b },
-            "eqrr" => Eqrr {
-                a: mkreg(a)?,
-                b: mkreg(b)?,
-            },
+            "eqrr" => Eqrr { a: mkreg(a)?, b: mkreg(b)? },
             unk => return err!("unknown opcode: {:?}", unk),
         };
 
-        let instr = Instruction {
-            output: Register::from_value(c)?,
-            op: opcode,
-        };
+        let instr =
+            Instruction { output: Register::from_value(c)?, op: opcode };
         Ok(instr)
     }
 }

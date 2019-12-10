@@ -47,7 +47,9 @@ fn parse(s: &str) -> aoc::Result<Vec<u8>> {
         .chars()
         .map(|c| {
             c.to_digit(10)
-                .ok_or_else(|| format_err!("Input contained a non-digit character"))
+                .ok_or_else(|| {
+                    format_err!("Input contained a non-digit character")
+                })
                 .and_then(|d| u8::try_from(d).map_err(Into::into))
         })
         .collect()

@@ -122,13 +122,13 @@ impl Scan {
         match self.grid.entry(p) {
             Entry::Occupied(mut e) => {
                 e.insert(t);
-            }
+            },
             Entry::Vacant(e) => {
                 e.insert(t);
                 if p[1] >= self.y_min {
                     self.water += 1;
                 }
-            }
+            },
         }
     }
 
@@ -148,7 +148,7 @@ impl Scan {
                 self.flow(p);
                 let [x, y] = p;
                 return self.waterfall([x, y + 1]);
-            }
+            },
         }
     }
 
@@ -188,10 +188,10 @@ impl Scan {
                         let r = x + (r - 1);
                         (l..=r).for_each(|x| self.settle([x, y]));
                         Action::Fill
-                    }
+                    },
                     _ => Action::Done,
                 }
-            }
+            },
         }
     }
 }
@@ -206,11 +206,7 @@ fn level1(s: &str) -> Result<u32, Box<dyn Error>> {
 fn level2(s: &str) -> Result<u32, Box<dyn Error>> {
     let mut scan = s.parse::<Scan>()?;
     scan.waterfall([500, 1]);
-    let c = scan
-        .grid
-        .values()
-        .filter(|s| **s == GroundState::Settled)
-        .count();
+    let c = scan.grid.values().filter(|s| **s == GroundState::Settled).count();
     Ok(c as u32)
 }
 

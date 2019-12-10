@@ -207,10 +207,10 @@ impl Sample {
     }
 }
 
-fn get_next<T>(lines: &mut impl Iterator<Item = T>) -> Result<T, Box<dyn Error>> {
-    lines
-        .next()
-        .ok_or_else(|| format_err!("unexpected end of input"))
+fn get_next<T>(
+    lines: &mut impl Iterator<Item = T>,
+) -> Result<T, Box<dyn Error>> {
+    lines.next().ok_or_else(|| format_err!("unexpected end of input"))
 }
 
 impl FromStr for Sample {
@@ -245,14 +245,7 @@ impl FromStr for Sample {
             parse_reg(l)?
         };
 
-        let sample = Sample {
-            before,
-            after,
-            code,
-            a,
-            b,
-            c,
-        };
+        let sample = Sample { before, after, code, a, b, c };
 
         Ok(sample)
     }
@@ -286,13 +279,12 @@ where
 }
 
 fn level1(samples: &[Sample]) -> usize {
-    samples
-        .iter()
-        .filter(|s| s.matching_opcodes().count() >= 3)
-        .count()
+    samples.iter().filter(|s| s.matching_opcodes().count() >= 3).count()
 }
 
-fn get_opcode_parser(samples: &[Sample]) -> impl Fn(Val, Val, Val, Val) -> OpCode {
+fn get_opcode_parser(
+    samples: &[Sample],
+) -> impl Fn(Val, Val, Val, Val) -> OpCode {
     let mut map = vec![HashSet::new(); 16];
     for sample in samples {
         let matching = sample

@@ -25,8 +25,10 @@ impl std::str::FromStr for Record {
         use regex::Regex;
 
         lazy_static! {
-            static ref DATE_RE: Regex =
-                { Regex::new(r"\[(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})\]").unwrap() };
+            static ref DATE_RE: Regex = {
+                Regex::new(r"\[(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})\]")
+                    .unwrap()
+            };
             static ref ID_RE: Regex = Regex::new(r"#(\d+)").unwrap();
         }
 
@@ -34,7 +36,10 @@ impl std::str::FromStr for Record {
             .find(s)
             .ok_or_else(|| format_err!("Unexpected input format"))?;
 
-        let time = chrono::NaiveDateTime::parse_from_str(date_match.as_str(), "[%Y-%m-%d %H:%M]")?;
+        let time = chrono::NaiveDateTime::parse_from_str(
+            date_match.as_str(),
+            "[%Y-%m-%d %H:%M]",
+        )?;
         let action = if s.contains("wakes up") {
             Action::WakeUp
         } else if s.contains("falls asleep") {
@@ -72,10 +77,7 @@ where
 
     let mut sleep_log: HashMap<usize, [u32; 60]> = HashMap::new();
     let mut guard = match logs.first().unwrap() {
-        Record {
-            action: Action::BeginShift(id),
-            ..
-        } => *id,
+        Record { action: Action::BeginShift(id), .. } => *id,
         _ => panic!("First action should always be a new guard shift"),
     };
 
@@ -88,14 +90,16 @@ where
             Action::WakeUp => {
                 let start = sleep.unwrap();
                 let end = rec.time.minute();
-                let guard_log = sleep_log.entry(guard).or_insert_with(|| [0; 60]);
+                let guard_log =
+                    sleep_log.entry(guard).or_insert_with(|| [0; 60]);
                 (start..end).for_each(|i| guard_log[i as usize] += 1);
-            }
+            },
         }
     }
 
     let (id, sleep) = sleep_log.into_iter().max_by_key(strategy).unwrap();
-    let (minute, _count) = sleep.iter().enumerate().max_by_key(|(_i, x)| *x).unwrap();
+    let (minute, _count) =
+        sleep.iter().enumerate().max_by_key(|(_i, x)| *x).unwrap();
     id as u32 * minute as u32
 }
 

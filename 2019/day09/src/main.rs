@@ -1,16 +1,18 @@
 use intcode::{self, Signal};
 use std::io::{self, Read, Write};
 
-fn run_with_input(ic: intcode::VM, input_value: intcode::Value) -> aoc::Result<intcode::Value> {
+fn run_with_input(
+    ic: intcode::VM,
+    input_value: intcode::Value,
+) -> aoc::Result<intcode::Value> {
     let (input, output) = ic.spawn();
     input.send(Signal::Value(input_value))?;
     let mut result = None;
     for o in output {
         match o {
             Signal::Value(x) => result = Some(x),
-            Signal::Halting if result == None => {
-                return aoc::err!("BOOST halted before giving output")
-            }
+            Signal::Halting if result == None =>
+                return aoc::err!("BOOST halted before giving output"),
             Signal::Halting => break,
         }
     }

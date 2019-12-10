@@ -130,16 +130,16 @@ fn simulate(mut grid: Box<[Box<[State]>]>, t_max: u32) -> u32 {
                     State::Open if cs.trees > 2 => {
                         wood += 1;
                         State::Trees
-                    }
+                    },
                     State::Trees if cs.lumber > 2 => {
                         wood -= 1;
                         lumber += 1;
                         State::Lumberyard
-                    }
+                    },
                     State::Lumberyard if cs.lumber < 1 || cs.trees < 1 => {
                         lumber -= 1;
                         State::Open
-                    }
+                    },
                     s => s,
                 };
             }
@@ -151,7 +151,7 @@ fn simulate(mut grid: Box<[Box<[State]>]>, t_max: u32) -> u32 {
         match history.entry(score) {
             Entry::Vacant(e) => {
                 e.insert((t, 1));
-            }
+            },
             Entry::Occupied(mut e) => {
                 let (t_0, count) = e.get_mut();
                 if *count < LIMIT {
@@ -173,7 +173,7 @@ fn simulate(mut grid: Box<[Box<[State]>]>, t_max: u32) -> u32 {
                         .map(|(score, _t)| score)
                         .unwrap();
                 }
-            }
+            },
         }
     }
 

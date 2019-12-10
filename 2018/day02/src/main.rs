@@ -32,7 +32,8 @@ fn level2(s: &str) -> Option<String> {
         for l2 in lines.iter().skip(i) {
             let zipped = l1.chars().zip(l2.chars());
             if zipped.clone().filter(|(a, b)| a != b).count() == 1 {
-                let substring = zipped.filter(|(a, b)| a == b).map(|(a, _b)| a).collect();
+                let substring =
+                    zipped.filter(|(a, b)| a == b).map(|(a, _b)| a).collect();
                 return Some(substring);
             }
         }
@@ -48,7 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let checksum = level1(&input);
     writeln!(io::stderr(), "level 1: {}", checksum)?;
 
-    let commons = level2(&input).ok_or_else(|| "failed to find the two correct box IDs")?;
+    let commons = level2(&input)
+        .ok_or_else(|| "failed to find the two correct box IDs")?;
     writeln!(io::stderr(), "level 2: {}", commons)?;
 
     // stdout is used to submit solutions
@@ -80,6 +82,9 @@ mod test {
 
     #[test]
     fn level2_regression() {
-        assert_eq!(level2(INPUT), Some("rteotyxzbodglnpkudawhijsc".to_string()));
+        assert_eq!(
+            level2(INPUT),
+            Some("rteotyxzbodglnpkudawhijsc".to_string())
+        );
     }
 }

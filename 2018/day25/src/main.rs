@@ -38,7 +38,8 @@ fn level1(points: &[Point]) -> (Graph, usize) {
     let mut graph = Graph::new();
     for p in points {
         graph.add_node(*p);
-        let connected = vp.find_nearest_custom(p, &(), ConstellationSearch::default());
+        let connected =
+            vp.find_nearest_custom(p, &(), ConstellationSearch::default());
         for (q, dist) in connected.into_iter().filter(|(q, _)| q != p) {
             assert!(dist <= LIMIT);
             graph.add_edge(*p, q, dist);
@@ -60,15 +61,11 @@ fn absdiff(a: i8, b: i8) -> u8 {
 struct Point([i8; 4]);
 
 impl vps::MetricSpace for Point {
-    type UserData = ();
     type Distance = u8;
+    type UserData = ();
 
     fn distance(&self, other: &Point, _: &Self::UserData) -> Self::Distance {
-        self.0
-            .iter()
-            .zip(other.0.iter())
-            .map(|(a, b)| absdiff(*a, *b))
-            .sum()
+        self.0.iter().zip(other.0.iter()).map(|(a, b)| absdiff(*a, *b)).sum()
     }
 }
 
@@ -205,5 +202,4 @@ mod test {
 -2,2,3,-1
 1,2,2,0
 -1,-2,0,-2";
-
 }

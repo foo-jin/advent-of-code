@@ -73,8 +73,9 @@ fn level2_bin_search(s: &str) -> u32 {
             (Infection, Infection) => {
                 prev = boost;
                 boost *= 2;
-            }
-            _ => panic!("a higher boost can never lead to immune system losing"),
+            },
+            _ =>
+                panic!("a higher boost can never lead to immune system losing"),
         }
     }
 }
@@ -130,7 +131,8 @@ impl World {
                 }
 
                 if let Some(target) = group.target {
-                    let mut target = enemies.iter_mut().find(|g| g.id == target).unwrap();
+                    let mut target =
+                        enemies.iter_mut().find(|g| g.id == target).unwrap();
                     killed |= group.attack(&mut target);
                 }
             }
@@ -174,7 +176,7 @@ impl World {
                 Some((_, def)) => {
                     atk.target = Some(def.id);
                     taken.insert(def.id);
-                }
+                },
             }
         }
     }
@@ -198,7 +200,10 @@ impl World {
     fn log_state(&self) {
         let mut msg = "\nImmune system:\n".to_owned();
         for g in &self.immuno {
-            msg.push_str(&format!("Group {} contains {} units\n", g.id.1, g.units));
+            msg.push_str(&format!(
+                "Group {} contains {} units\n",
+                g.id.1, g.units
+            ));
         }
         msg.push_str(&format!(
             "total: {}\n",
@@ -206,7 +211,10 @@ impl World {
         ));
         msg.push_str("Infection:\n");
         for g in &self.infection {
-            msg.push_str(&format!("Group {} contains {} units\n", g.id.1, g.units));
+            msg.push_str(&format!(
+                "Group {} contains {} units\n",
+                g.id.1, g.units
+            ));
         }
         msg.push_str(&format!(
             "total: {}\n",
@@ -324,9 +332,9 @@ impl FromStr for Group {
 
         let mut matchups = HashMap::new();
         if let Some(inner) = caps.name("inner") {
-            let s = inner
-                .as_str()
-                .trim_matches(|c: char| c == '(' || c == ')' || c.is_whitespace());
+            let s = inner.as_str().trim_matches(|c: char| {
+                c == '(' || c == ')' || c.is_whitespace()
+            });
             log::trace!("inner: {}", s);
             if s.contains(';') {
                 let parts = s.split(';').collect::<Vec<_>>();
@@ -369,27 +377,22 @@ impl FromStr for World {
             parse_groups(s, Army::Infection)?
         };
 
-        let mut atk_order: Vec<Idx> = immuno
-            .iter()
-            .chain(infection.iter())
-            .map(|g| g.id)
-            .collect();
+        let mut atk_order: Vec<Idx> =
+            immuno.iter().chain(infection.iter()).map(|g| g.id).collect();
 
         atk_order.sort_by_key(|(army, i)| match army {
             Army::ImmuneSys => cmp::Reverse(immuno[i - 1].initiative),
             Army::Infection => cmp::Reverse(infection[i - 1].initiative),
         });
 
-        Ok(World {
-            boost: 0,
-            atk_order,
-            immuno,
-            infection,
-        })
+        Ok(World { boost: 0, atk_order, immuno, infection })
     }
 }
 
-fn parse_matchups(s: &str, matchups: &mut HashMap<DamageKind, Affinity>) -> aoc::Result<()> {
+fn parse_matchups(
+    s: &str,
+    matchups: &mut HashMap<DamageKind, Affinity>,
+) -> aoc::Result<()> {
     let parts = s.split(" to ").collect::<Vec<_>>();
     let dmgkinds = parse_dmgkind_list(parts[1])?;
     let aff = match parts[0] {

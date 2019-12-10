@@ -20,9 +20,8 @@ fn level1(original_vm: &intcode::VM) -> aoc::Result<u32> {
             vm.run()?;
             amplified_input = match output.recv().unwrap() {
                 Signal::Value(x) => x,
-                Signal::Halting => {
-                    return aoc::err!("Amplifier halted before giving output")
-                }
+                Signal::Halting =>
+                    return aoc::err!("Amplifier halted before giving output"),
             };
         }
 

@@ -86,7 +86,7 @@ fn levels(meteors: &[Point]) -> aoc::Result<(usize, usize)> {
                     } else {
                         Left(r)
                     }
-                }
+                },
             };
             angles.entry(angle).or_insert_with(Vec::new).push((dist, (x2, y2)));
         }
@@ -119,7 +119,7 @@ fn levels(meteors: &[Point]) -> aoc::Result<(usize, usize)> {
                         coord = p;
                     }
                     log::debug!("vaporizing astroid #{} at {:?}", destroyed, p);
-                }
+                },
                 None => (),
             }
         }

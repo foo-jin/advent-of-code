@@ -17,15 +17,16 @@ fn level1(license: &[usize]) -> usize {
                 let meta = *meta;
                 let license = &license[2..];
 
-                let (license, mut sum) = (0..children).fold((license, 0), |(lic, sum), _| {
-                    let (rest, val) = process_node(lic);
-                    (rest, sum + val)
-                });
+                let (license, mut sum) =
+                    (0..children).fold((license, 0), |(lic, sum), _| {
+                        let (rest, val) = process_node(lic);
+                        (rest, sum + val)
+                    });
 
                 let (meta, license) = license.split_at(meta);
                 sum += meta.iter().sum::<usize>();
                 (license, sum)
-            }
+            },
         }
     }
 
@@ -36,7 +37,8 @@ fn level1(license: &[usize]) -> usize {
 fn level2(license: &[usize]) -> usize {
     fn process_node(license: &[usize]) -> (&[usize], usize) {
         match license {
-            [] | [_] => panic!("Invariant violated: license is a slice of length < 2"),
+            [] | [_] =>
+                panic!("Invariant violated: license is a slice of length < 2"),
             [children, meta, ..] => {
                 let children = *children;
                 let meta = *meta;
@@ -60,7 +62,7 @@ fn level2(license: &[usize]) -> usize {
                 };
 
                 (license, sum)
-            }
+            },
         }
     }
 

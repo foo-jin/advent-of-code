@@ -33,9 +33,14 @@ fn parse(s: &str) -> HashMap<&str, Vec<&str>> {
 }
 
 fn level1(orbits: &HashMap<&str, Vec<&str>>) -> u32 {
-    fn dfs(orbits: &HashMap<&str, Vec<&str>>, current: &str, depth: u32) -> u32 {
+    fn dfs(
+        orbits: &HashMap<&str, Vec<&str>>,
+        current: &str,
+        depth: u32,
+    ) -> u32 {
         let result = match orbits.get(current) {
-            Some(children) => children.iter().map(|c| dfs(orbits, c, depth + 1)).sum(),
+            Some(children) =>
+                children.iter().map(|c| dfs(orbits, c, depth + 1)).sum(),
             None => 0,
         };
         depth + result

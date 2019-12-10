@@ -64,8 +64,10 @@ fn level1(s: &str) -> u64 {
     for (oa, pa1, pa2) in &a {
         for (ob, pb1, pb2) in &b {
             let (x, x1, x2, y, y1, y2) = match (oa, ob) {
-                (Horizontal, Vertical) => (pb1.0, pa1.0, pa2.0, pa1.1, pb1.1, pb2.1),
-                (Vertical, Horizontal) => (pa1.0, pb1.0, pb2.0, pb1.1, pa1.1, pa2.1),
+                (Horizontal, Vertical) =>
+                    (pb1.0, pa1.0, pa2.0, pa1.1, pb1.1, pb2.1),
+                (Vertical, Horizontal) =>
+                    (pa1.0, pb1.0, pb2.0, pb1.1, pa1.1, pa2.1),
                 _ => continue,
             };
 
@@ -109,21 +111,17 @@ fn level2(s: &str) -> u64 {
     let mut steps = std::u64::MAX;
     for (da, pa1, pa2, la) in &a {
         for (db, pb1, pb2, lb) in &b {
-            let oa = if *da == "U" || *da == "D" {
-                Vertical
-            } else {
-                Horizontal
-            };
+            let oa =
+                if *da == "U" || *da == "D" { Vertical } else { Horizontal };
 
-            let ob = if *db == "U" || *db == "D" {
-                Vertical
-            } else {
-                Horizontal
-            };
+            let ob =
+                if *db == "U" || *db == "D" { Vertical } else { Horizontal };
 
             let (x, x1, x2, y, y1, y2) = match (oa, ob) {
-                (Horizontal, Vertical) => (pb1.0, pa1.0, pa2.0, pa1.1, pb1.1, pb2.1),
-                (Vertical, Horizontal) => (pa1.0, pb1.0, pb2.0, pb1.1, pa1.1, pa2.1),
+                (Horizontal, Vertical) =>
+                    (pb1.0, pa1.0, pa2.0, pa1.1, pb1.1, pb2.1),
+                (Vertical, Horizontal) =>
+                    (pa1.0, pb1.0, pb2.0, pb1.1, pa1.1, pa2.1),
                 _ => continue,
             };
 

@@ -50,7 +50,10 @@ fn level2(cave: &Cave) -> u32 {
             grid.neighbours(&p, false)
                 .filter(|&q| ALLOWED[grid[&q] as usize] & eq == eq)
                 .map(|(nx, ny)| (((nx, ny), eq), 1))
-                .chain(std::iter::once(((p, ALLOWED[grid[&p] as usize] - eq), 7)))
+                .chain(std::iter::once((
+                    (p, ALLOWED[grid[&p] as usize] - eq),
+                    7,
+                )))
                 .collect::<Vec<_>>()
         },
         |&((x, y), _)| pf::absdiff(x, tx) + pf::absdiff(y, ty),

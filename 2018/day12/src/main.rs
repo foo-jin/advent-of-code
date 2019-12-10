@@ -47,9 +47,8 @@ fn simulate(init: &[bool], rules: &HashMap<Vec<bool>, bool>, gen: u64) -> i128 {
     let mut counter = 0;
     for i in 1..=gen {
         let mut next = vec![false; 3];
-        let updated = state
-            .windows(5)
-            .map(|w| rules.get(w).cloned().unwrap_or(false));
+        let updated =
+            state.windows(5).map(|w| rules.get(w).cloned().unwrap_or(false));
         next.extend(updated);
         next.extend_from_slice(&[false; 3]);
         state = next;

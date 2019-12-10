@@ -10,10 +10,7 @@ struct CookBook {
 
 impl CookBook {
     fn new() -> Self {
-        CookBook {
-            recipes: vec![3, 7],
-            elfs: [0, 1],
-        }
+        CookBook { recipes: vec![3, 7], elfs: [0, 1] }
     }
 
     fn make(&mut self) -> usize {
@@ -44,12 +41,8 @@ fn level1(k: usize) -> u64 {
 }
 
 fn level2(k: &str) -> usize {
-    let target = k
-        .trim()
-        .as_bytes()
-        .iter()
-        .map(|b| b - b'0')
-        .collect::<Vec<u8>>();
+    let target =
+        k.trim().as_bytes().iter().map(|b| b - b'0').collect::<Vec<u8>>();
 
     let mut cookbook = CookBook::new();
     let mut ptr = 0;
