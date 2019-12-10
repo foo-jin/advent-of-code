@@ -1,7 +1,7 @@
 use num_rational::Ratio;
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::BTreeMap,
     convert::TryFrom,
     io::{self, Read, Write},
 };
@@ -58,7 +58,7 @@ fn parse(s: &str) -> aoc::Result<Vec<Point>> {
     Ok(meteors)
 }
 
-fn level1(meteors: &[Point]) -> aoc::Result<usize> {
+fn levels(meteors: &[Point]) -> aoc::Result<(usize, usize)> {
     use Angle::*;
 
     let mut max_count = 0;
@@ -129,7 +129,8 @@ fn level1(meteors: &[Point]) -> aoc::Result<usize> {
         }
     }
 
-    usize::try_from(coord.0 * 100 + coord.1).map_err(Into::into)
+    let part2 = usize::try_from(coord.0 * 100 + coord.1)?;
+    Ok((vaporization_plan.len(), part2))
 }
 
 fn solve() -> aoc::Result<()> {
@@ -137,14 +138,12 @@ fn solve() -> aoc::Result<()> {
     io::stdin().read_to_string(&mut input)?;
     let parsed = parse(&input)?;
 
-    let some = level1(&parsed)?;
+    let (some, thing) = levels(&parsed)?;
     writeln!(io::stderr(), "level 1: {}", some)?;
-
-    // let thing = level2(&parsed)?;
-    // writeln!(io::stderr(), "level 2: {}", thing)?;
+    writeln!(io::stderr(), "level 2: {}", thing)?;
 
     // stdout is used to submit solutions
-    writeln!(io::stdout(), "{}", some)?;
+    writeln!(io::stdout(), "{}", thing)?;
     Ok(())
 }
 
@@ -170,32 +169,11 @@ mod test {
     const INPUT: &str = include_str!("../input.txt");
 
     #[test_log::new]
-    fn level1_examples() -> aoc::Result<()> {
-        let input = parse(
-            "\
-.#..##.###...#######
-##.############..##.
-.#.######.########.#
-.###.#######.####.#.
-#####.##.#.##.###.##
-..#####..#.#########
-####################
-#.####....###.#.#.##
-##.#################
-#####.##.###..####..
-..######..##.#######
-####.##.####...##..#
-.#####..#.######.###
-##...#.##########...
-#.##########.#######
-.####.#.###.###.#.##
-....##.##.###..#####
-.#.#.###########.###
-#.#.#.#####.####.###
-###.##.####.##.#..##",
-        )?;
-        let result = level1(&input)?;
-        assert_eq!(result, 802);
+    fn sanity() -> aoc::Result<()> {
+        let input = parse(INPUT)?;
+        let (p1, p2) = levels(&input)?;
+        assert_eq!(p1, 230);
+        assert_eq!(p2, 1205);
         Ok(())
     }
 }
