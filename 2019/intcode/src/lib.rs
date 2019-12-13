@@ -129,6 +129,10 @@ impl VM {
         &self.mem
     }
 
+    pub fn mem_mut(&mut self) -> &mut [Value] {
+        &mut self.mem
+    }
+
     pub fn connect_io(
         &mut self,
         input: mpsc::Receiver<Signal>,
