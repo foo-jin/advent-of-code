@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-DAY="${1}"
-hyperfine "./target/release/day${DAY} < 2018/day${DAY}/input.txt"
+YEAR="${1}"
+DAY="${2}"
+hyperfine "./target/release/${YEAR}day${DAY} < ${YEAR}/day${DAY}/input.txt"
