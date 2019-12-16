@@ -8,6 +8,7 @@ use std::{
 
 const CARDINAL: [Direction; 4] =
     [Direction::North, Direction::East, Direction::South, Direction::West];
+const ORIGIN: Position = Position(0, 0);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Terrain {
@@ -54,6 +55,10 @@ impl Into<intcode::Value> for Direction {
 }
 
 impl Position {
+    fn neighbours(self) -> impl Iterator<Item = Self> {
+        CARDINAL.iter().map(move |&d| self.apply(d))
+    }
+
     fn apply(self, d: Direction) -> Self {
         use Direction::*;
         let mut x = self.0;
@@ -80,92 +85,69 @@ impl Direction {
     }
 }
 
-fn level1(vm: intcode::VM) -> aoc::Result<u32> {
-    use Terrain::*;
-
-    let mut mapped = Map::new();
-    let mut current_pos = Position(0, 0);
-    mapped.insert(current_pos, Empty);
-    let mut unknown =
-        CARDINAL.iter().cloned().map(|d| (current_pos, d)).collect::<Vec<_>>();
-    let (tx, rx) = vm.spawn();
-    while let Some((known_pos, direction)) = unknown.pop() {
-        let target = known_pos.apply(direction);
-        if mapped.contains_key(&target) {
-            continue;
-        }
-        // dbg!(&mapped, current_pos, known_pos, direction);
-        for d in find_path(&mapped, current_pos, known_pos).unwrap() {
-            tx.send(Signal::Value(d.into())).unwrap();
-            match extract_status_code(rx.recv().unwrap())? {
-                Empty => current_pos = current_pos.apply(d),
-                Oxygen => return aoc::err!("Oxygen found, wtf are we doing"),
-                Wall => panic!("wall hit while following found path"),
-            }
-        }
-
-        tx.send(Signal::Value(direction.into())).unwrap();
-        let next = current_pos.apply(direction);
-        let terrain = extract_status_code(rx.recv().unwrap())?;
-        // dbg!(current_pos);
-        // dbg!(next, terrain);
-        mapped.insert(next, terrain);
-        match terrain {
-            Empty => {
-                current_pos = next;
-                assert_ne!(mapped[&current_pos], Wall);
-                unknown
-                    .extend(CARDINAL.iter().cloned().map(|d| (current_pos, d)));
-            },
-            Oxygen => {
-                let path = find_path(&mapped, Position(0, 0), next)
-                    .expect("Could not find path to reached position");
-                let _ = tx.send(Signal::Halting);
-                return Ok(path.len() as u32);
-            },
-            Wall => (),
-        }
-    }
-    aoc::err!("Did not find oxygen")
+fn level1(map: &Map<Position, Terrain>) -> aoc::Result<u32> {
+    bfs(map, ORIGIN, |mapstate, pos| mapstate[&pos] == Terrain::Oxygen, |_| ())
+        .ok_or_else(|| aoc::format_err!("Failed to find oxygen on the map"))
 }
 
-fn level2(vm: intcode::VM) -> aoc::Result<u32> {
-    use Terrain::*;
+fn level2(map: &Map<Position, Terrain>) -> u32 {
+    let start = map
+        .iter()
+        .find(|&(_, &t)| t == Terrain::Oxygen)
+        .map(|(p, _)| p)
+        .cloned()
+        .unwrap();
+    bfs(
+        map,
+        start,
+        |map, _p| !map.values().any(|&terrain| terrain == Terrain::Empty),
+        |t| match *t {
+            Terrain::Empty => *t = Terrain::Oxygen,
+            _ => (),
+        },
+    )
+    .expect("Failed flood-fill")
+}
 
-    let mut map = explore_area(vm)?;
+fn bfs<F, G>(
+    map: &Map<Position, Terrain>,
+    p_init: Position,
+    goal_reached: F,
+    update: G,
+) -> Option<u32>
+where
+    F: Fn(&Map<Position, Terrain>, Position) -> bool,
+    G: Fn(&mut Terrain),
+{
+    let mut map = map.clone();
     let mut time = 0;
-    let start = map.iter().find(|&(_p, &t)| t == Oxygen).unwrap();
-    let mut outer = vec![*start.0];
+    let mut outer: Vec<Position> = p_init.neighbours().collect();
+    let mut seen = Set::new();
     loop {
-        if !map.values().any(|&terrain| terrain == Empty) {
-            break;
-        }
-
+        time += 1;
         let mut next = Vec::new();
+        if outer.is_empty() {
+            return None;
+        }
         for p in outer {
-            for q in CARDINAL.iter().map(|&d| p.apply(d)) {
-                let current = map.get_mut(&q).unwrap();
-                match current {
-                    Wall | Oxygen => (),
-                    Empty => {
-                        *current = Oxygen;
-                        next.push(q);
-                    },
-                }
+            if !seen.insert(p)
+                || !map.contains_key(&p)
+                || map[&p] == Terrain::Wall
+            {
+                continue;
             }
+
+            let t = map.get_mut(&p).unwrap();
+            update(t);
+
+            if goal_reached(&map, p) {
+                return Some(time);
+            }
+
+            next.extend(p.neighbours());
         }
         outer = next;
-        time += 1;
     }
-    Ok(time)
-}
-
-fn extract_status_code(sig: Signal) -> aoc::Result<Terrain> {
-    let v = match sig {
-        Signal::Value(v) => v,
-        Signal::Halting => panic!("unexpected halt"),
-    };
-    Terrain::try_from(v)
 }
 
 fn explore_area(vm: intcode::VM) -> aoc::Result<Map<Position, Terrain>> {
@@ -207,65 +189,30 @@ fn explore_area(vm: intcode::VM) -> aoc::Result<Map<Position, Terrain>> {
 
     let (tx, rx) = vm.spawn();
     let mut map = Map::new();
-    map.insert(Position(0, 0), Terrain::Empty);
-    dfs(&mut map, Position(0, 0), &tx, &rx)?;
+    map.insert(ORIGIN, Terrain::Empty);
+    dfs(&mut map, ORIGIN, &tx, &rx)?;
     let _ = tx.send(Signal::Halting);
     Ok(map)
 }
 
-fn find_path(
-    map: &Map<Position, Terrain>,
-    from: Position,
-    to: Position,
-) -> Option<Vec<Direction>> {
-    fn dfs(
-        map: &Map<Position, Terrain>,
-        from: Position,
-        to: Position,
-        seen: &mut Set<Position>,
-    ) -> Option<Vec<Direction>> {
-        use Terrain::*;
-        if !seen.insert(from) {
-            return None;
-        }
-        if let Some(&terrain) = map.get(&from) {
-            if terrain == Empty || terrain == Oxygen {
-                if from == to {
-                    return Some(Vec::new());
-                }
-
-                for d in CARDINAL.iter().cloned() {
-                    let next = from.apply(d);
-                    if let Some(mut path) = dfs(map, next, to, seen) {
-                        path.push(d);
-                        return Some(path);
-                    }
-                }
-            }
-        }
-        seen.remove(&from);
-        None
-    }
-
-    // dbg!(map, from ,to);
-    // eprintln!("==================");
-
-    let mut seen = Set::new();
-    dfs(map, from, to, &mut seen).map(|mut p| {
-        p.reverse();
-        p
-    })
+fn extract_status_code(sig: Signal) -> aoc::Result<Terrain> {
+    let v = match sig {
+        Signal::Value(v) => v,
+        Signal::Halting => panic!("unexpected halt"),
+    };
+    Terrain::try_from(v)
 }
 
 fn solve() -> aoc::Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let vm = intcode::VM::with_program(&input)?;
+    let map = explore_area(vm)?;
 
-    // let some = level1(vm)?;
-    // writeln!(io::stderr(), "level 1: {}", some)?;
+    let some = level1(&map)?;
+    writeln!(io::stderr(), "level 1: {}", some)?;
 
-    let thing = level2(vm)?;
+    let thing = level2(&map);
     writeln!(io::stderr(), "level 2: {}", thing)?;
 
     // stdout is used to submit solutions
@@ -295,10 +242,14 @@ mod test {
     const INPUT: &str = include_str!("../input.txt");
 
     #[test_log::new]
-    fn level1_examples() -> aoc::Result<()> {
-        let vm = intcode::VM::with_program("asdf")?;
-        let result = level1(&input)?;
-        assert_eq!(result, ());
+    fn sanity() -> aoc::Result<()> {
+        let vm = intcode::VM::with_program(INPUT)?;
+        let map = explore_area(vm)?;
+        let some = level1(&map)?;
+        assert_eq!(some, 208, "part 1");
+
+        let thing = level2(&map);
+        assert_eq!(thing, 306, "part 2");
         Ok(())
     }
 }
