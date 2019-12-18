@@ -1,0 +1,15 @@
+[package]
+name = "2019day17"
+version = "0.1.0"
+authors = ["frank <frank.049@hotmail.com>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4.6"
+env_logger = "0.6.0"
+aoc = { path = "../../aoc/" }
+intcode = { path = "../intcode/" }
+num = "0.2.0"
+
+[dev-dependencies]
+test-log = { path = "../../test-log/" }
